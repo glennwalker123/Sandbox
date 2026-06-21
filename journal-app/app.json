@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Journal",
+    "slug": "journal-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#F4F1EA"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.journal.app"
+    },
+    "android": {
+      "package": "com.journal.app"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
