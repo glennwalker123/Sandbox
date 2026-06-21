@@ -12,8 +12,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { colors, moodColors } from '../theme';
-import { MOODS, TAGS, hasNotion } from '../config';
+import { MOODS, TAGS, isPreview } from '../config';
 import { createEntry } from '../api/notion';
+import PreviewBanner from '../components/PreviewBanner';
 
 export default function WriteScreen() {
   const [title, setTitle] = useState('');
@@ -33,12 +34,16 @@ export default function WriteScreen() {
   };
 
   const onSave = async () => {
-    if (!hasNotion()) {
-      Alert.alert('Not configured', 'Add your Notion token to .env first (see README).');
-      return;
-    }
     if (!body.trim()) {
       Alert.alert('Empty entry', 'Write something before saving.');
+      return;
+    }
+    if (isPreview()) {
+      reset();
+      Alert.alert(
+        'Preview mode',
+        'This is the UI prototype — nothing was saved. Add your Notion token in .env to save entries for real.'
+      );
       return;
     }
     setSaving(true);
@@ -65,6 +70,7 @@ export default function WriteScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {isPreview() ? <PreviewBanner /> : null}
       <ScrollView style={styles.flex} contentContainerStyle={styles.content}>
         <Text style={styles.heading}>New entry</Text>
 

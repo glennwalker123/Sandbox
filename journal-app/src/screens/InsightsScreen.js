@@ -9,8 +9,10 @@ import {
   Alert,
 } from 'react-native';
 import { colors } from '../theme';
-import { hasNotion, hasAnthropic } from '../config';
+import { isPreview } from '../config';
 import { generateWeeklyInsight, saveInsightToNotion } from '../api/insights';
+import { SAMPLE_INSIGHT } from '../sampleData';
+import PreviewBanner from '../components/PreviewBanner';
 
 export default function InsightsScreen() {
   const [loading, setLoading] = useState(false);
@@ -18,11 +20,13 @@ export default function InsightsScreen() {
   const [saving, setSaving] = useState(false);
 
   const onGenerate = async () => {
-    if (!hasNotion() || !hasAnthropic()) {
-      Alert.alert(
-        'Not configured',
-        'Add both your Notion token and Anthropic API key to .env first (see README).'
-      );
+    if (isPreview()) {
+      // Simulate a short delay so the loading state is visible, then show sample.
+      setLoading(true);
+      setTimeout(() => {
+        setInsight(SAMPLE_INSIGHT);
+        setLoading(false);
+      }, 700);
       return;
     }
     setLoading(true);
@@ -37,6 +41,10 @@ export default function InsightsScreen() {
 
   const onSave = async () => {
     if (!insight?.text) return;
+    if (isPreview()) {
+      Alert.alert('Preview mode', 'Connect your keys in .env to save insights to Notion.');
+      return;
+    }
     setSaving(true);
     try {
       await saveInsightToNotion(insight);
@@ -50,6 +58,7 @@ export default function InsightsScreen() {
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.content}>
+      {isPreview() ? <PreviewBanner /> : null}
       <Text style={styles.heading}>Weekly insight</Text>
       <Text style={styles.subtitle}>
         A reflection on your past 7 days, generated from your entries.

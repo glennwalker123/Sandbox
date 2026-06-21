@@ -15,6 +15,29 @@ Android phone.
 
 🎙️ **Speech-to-text** is the next milestone — see the roadmap below.
 
+## Prototype on your phone now — no computer needed
+
+You can preview the whole UI today, entirely from your phone, using **Expo
+Snack**. It runs in your phone's browser and shows a live preview in the **Expo
+Go** app. Because it's the same Expo/React Native code, everything you see
+transfers straight to your computer later when you build for real.
+
+In **preview mode** (no API keys) the app shows **sample entries and a sample
+insight**, so every screen looks alive without any setup.
+
+**Steps (phone-only):**
+
+1. Install **Expo Go** from the App Store / Play Store.
+2. In your phone browser, open **https://snack.expo.dev**.
+3. Tap the menu (☰) → **Import git repository**.
+4. Paste the import URL for this project's `journal-app` folder (see the chat for
+   the exact link, which pins a specific commit so it imports cleanly), then tap
+   **Import**.
+5. Tap **My Device** and open it in **Expo Go** — you'll see the live app.
+
+Everything works in preview except real saving/insights (those need your keys).
+When you're on a computer later, clone the repo and follow **Setup** below.
+
 ## How it's wired
 
 ```

@@ -19,3 +19,7 @@ export const TAGS = ['work', 'health', 'relationships', 'gratitude', 'ideas'];
 
 export const hasNotion = () => Boolean(NOTION_TOKEN && NOTION_DATABASE_ID);
 export const hasAnthropic = () => Boolean(ANTHROPIC_API_KEY);
+
+// When any key is missing, the app runs in "preview" mode with sample data so
+// the UI can be prototyped (e.g. in Expo Snack) without configuration.
+export const isPreview = () => !hasNotion() || !hasAnthropic();

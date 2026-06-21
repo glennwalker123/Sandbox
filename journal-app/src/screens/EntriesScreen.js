@@ -9,8 +9,10 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, moodColors } from '../theme';
-import { hasNotion } from '../config';
+import { isPreview } from '../config';
 import { listEntries } from '../api/notion';
+import { SAMPLE_ENTRIES } from '../sampleData';
+import PreviewBanner from '../components/PreviewBanner';
 
 export default function EntriesScreen() {
   const [entries, setEntries] = useState([]);
@@ -18,8 +20,8 @@ export default function EntriesScreen() {
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    if (!hasNotion()) {
-      setError('Add your Notion token to .env first (see README).');
+    if (isPreview()) {
+      setEntries(SAMPLE_ENTRIES);
       return;
     }
     setLoading(true);
@@ -50,6 +52,7 @@ export default function EntriesScreen() {
 
   return (
     <View style={styles.flex}>
+      {isPreview() ? <PreviewBanner /> : null}
       <Text style={styles.heading}>Entries</Text>
       <FlatList
         data={entries}
