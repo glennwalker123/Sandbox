@@ -8,8 +8,18 @@ import kotlin.math.hypot
  * An n × n bear. Cells are [EMPTY], [FUR] (lit), [INNER_EAR] (dim) or [HOLE]
  * (a feature cut out of the fur: an unlit dot that hides whatever is behind it).
  */
-class BearGrid(val n: Int, val cells: ByteArray, val center: Int, val anchorBottom: Int, val halfWidth: Int) {
+class BearGrid(
+    val n: Int,
+    val cells: ByteArray,
+    val center: Int,
+    val anchorBottom: Int,
+    val halfWidth: Int,
+    /** [Tint] ordinal per cell; almost all are [Tint.NONE]. */
+    val tints: ByteArray = ByteArray(n * n),
+) {
     operator fun get(x: Int, y: Int): Int = cells[y * n + x].toInt()
+
+    fun tint(x: Int, y: Int): Tint = Tint.entries[tints[y * n + x].toInt()]
 
     companion object {
         const val EMPTY = 0
@@ -24,8 +34,12 @@ object BearRaster {
     fun build(look: BearLook, n: Int): BearGrid {
         val g = BearGeometry(look, n)
         val cells = ByteArray(n * n)
-        fun set(x: Int, y: Int, v: Int) {
-            if (x >= 0 && y >= 0 && x < n && y < n) cells[y * n + x] = v.toByte()
+        val tints = ByteArray(n * n)
+        fun set(x: Int, y: Int, v: Int, tint: Tint = Tint.NONE) {
+            if (x >= 0 && y >= 0 && x < n && y < n) {
+                cells[y * n + x] = v.toByte()
+                tints[y * n + x] = tint.ordinal.toByte()
+            }
         }
         fun get(x: Int, y: Int): Int = if (x >= 0 && y >= 0 && x < n && y < n) cells[y * n + x].toInt() else 0
         fun hole(x: Int, y: Int) {
@@ -80,7 +94,7 @@ object BearRaster {
             if (g.rightFootDown) set(g.rightFootX + i, g.footY + r, BearGrid.FUR)
         }
 
-        val grid = BearGrid(n, cells, g.center, g.anchorBottom, g.halfWidth)
+        val grid = BearGrid(n, cells, g.center, g.anchorBottom, g.halfWidth, tints)
         if (look.back) return grid
 
         val blink = look.blinking
@@ -171,16 +185,16 @@ object BearRaster {
             }
         }
 
-        fun block(x: Int, y: Int) { for (j in 0 until k) for (i in 0 until k) set(x + i, y + j, BearGrid.FUR) }
+        fun block(x: Int, y: Int, tint: Tint) { for (j in 0 until k) for (i in 0 until k) set(x + i, y + j, BearGrid.FUR, tint) }
         if (worried && g.roomy) {
             val dx = g.center + g.sway + g.halfWidth + 2 * k
             val dy = g.top - k
-            for ((i, j) in SWEAT) block(dx + i * k, dy + j * k)
+            for ((i, j) in SWEAT) block(dx + i * k, dy + j * k, Tint.SWEAT)
         }
         if (sleepy && g.roomy) {
             val zx = g.center + g.halfWidth - k
             val zy = g.top - 4 * k - look.zFrame * k
-            for ((i, j) in ZED) block(zx + i * k, zy + j * k)
+            for ((i, j) in ZED) block(zx + i * k, zy + j * k, Tint.SLEEP)
         }
         return grid
     }

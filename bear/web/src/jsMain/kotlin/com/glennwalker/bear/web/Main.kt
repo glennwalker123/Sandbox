@@ -11,6 +11,7 @@ import com.glennwalker.bear.core.CareMenu
 import com.glennwalker.bear.core.Floor
 import com.glennwalker.bear.core.SceneRaster
 import com.glennwalker.bear.core.Sprites
+import com.glennwalker.bear.core.Tint
 import com.glennwalker.bear.core.Tuning
 import com.glennwalker.bear.core.hear
 import kotlinx.browser.document
@@ -90,23 +91,38 @@ private class Leds(
         g.arc(x, y, radius, 0.0, 2 * PI)
     }
 
+    /**
+     * Draws one frame. [state] gives each dot as [dot]: off, or lit or dim with an optional tint.
+     * Dots are batched into one path per colour.
+     */
     fun draw(state: (col: Int, row: Int) -> Int) {
         ctx.clearRect(0.0, 0.0, canvas.width.toDouble(), canvas.height.toDouble())
         ctx.drawImage(unlit, 0.0, 0.0)
-        for ((color, wanted) in listOf(LIT to DOT_LIT, DIM to DOT_DIM)) {
-            ctx.fillStyle = color
+        val codes = IntArray(cols * rows) { i -> if (shown(i % cols, i / cols)) state(i % cols, i / cols) else DOT_OFF }
+        for (code in codes.distinct()) {
+            if (code == DOT_OFF) continue
+            ctx.fillStyle = colorOf(code)
             ctx.beginPath()
-            for (r in 0 until rows) for (c in 0 until cols) if (shown(c, r) && state(c, r) == wanted) dot(ctx, c, r)
+            for (i in codes.indices) if (codes[i] == code) dot(ctx, i % cols, i / cols)
             ctx.fill()
         }
     }
 }
 
+/** A dot code: lit or dim, with a tint. */
+private fun dot(lit: Boolean, tint: Tint = Tint.NONE) = (if (lit) DOT_LIT else DOT_DIM) + tint.ordinal * 4
+
+private fun colorOf(code: Int): String {
+    val tint = Tint.entries[code / 4]
+    val rgb = if (code % 4 == DOT_LIT) tint.lit else tint.dim
+    return "#" + rgb.toString(16).padStart(6, '0')
+}
+
 /** Draws a sprite ('#' lit, '+' dim) onto a matching grid of LEDs. */
-private fun Leds.drawSprite(sprite: List<String>) = draw { x, y ->
+private fun Leds.drawSprite(sprite: List<String>, litTint: Tint = Tint.NONE, dimTint: Tint = Tint.NONE) = draw { x, y ->
     when (sprite.getOrNull(y)?.getOrNull(x)) {
-        '#' -> DOT_LIT
-        '+' -> DOT_DIM
+        '#' -> dot(true, litTint)
+        '+' -> dot(false, dimTint)
         else -> DOT_OFF
     }
 }
@@ -137,10 +153,11 @@ fun main() {
     fun drawScene() {
         val dots = raster.render(sim)
         scene.draw { x, y ->
-            val v = dots[y * Floor.WIDTH + x].toInt()
+            val i = y * Floor.WIDTH + x
+            val v = dots[i].toInt()
             when {
-                v == SceneRaster.LIT -> DOT_LIT
-                SceneRaster.isDim(v, x, y) -> DOT_DIM
+                v == SceneRaster.LIT -> dot(true, raster.tint(i))
+                SceneRaster.isDim(v, x, y) -> dot(false, raster.tint(i))
                 else -> DOT_OFF
             }
         }
@@ -345,7 +362,7 @@ fun main() {
         option.style.transitionDelay = "${i * 22}ms"
         val icon = document.createElement("canvas") as HTMLCanvasElement
         option.appendChild(icon)
-        Leds(icon, 9, 9, backing = false).drawSprite(CareMenu.icon(item))
+        Leds(icon, 9, 9, backing = false).drawSprite(CareMenu.icon(item), dimTint = CareMenu.iconTint(item))
         menu.appendChild(option)
         item to option
     }
@@ -491,7 +508,7 @@ fun main() {
             leds.draw { x, y ->
                 val sy = y + lift
                 if (sy >= n) DOT_OFF else when (bear[x, sy]) {
-                    BearGrid.FUR -> DOT_LIT
+                    BearGrid.FUR -> dot(true, bear.tint(x, sy))
                     BearGrid.INNER_EAR -> DOT_DIM
                     else -> DOT_OFF
                 }

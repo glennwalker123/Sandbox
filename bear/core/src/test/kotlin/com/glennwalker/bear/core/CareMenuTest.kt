@@ -115,3 +115,25 @@ class BearTalkTest {
         assertEquals(before + Tuning.TALK_HAPPINESS, calm.happiness)
     }
 }
+
+class TintTest {
+    @Test
+    fun colourIsOnlyAHint() {
+        val s = BearSim(Random(2))
+        s.pat()
+        val raster = SceneRaster()
+        val dots = raster.render(s)
+        val tinted = dots.indices.filter { dots[it].toInt() != 0 && raster.tint(it) != Tint.NONE }
+        val lit = dots.indices.count { dots[it].toInt() == SceneRaster.LIT || dots[it].toInt() == SceneRaster.DIM }
+        assertTrue(tinted.isNotEmpty(), "the heart and HUD icons are tinted")
+        assertTrue(tinted.all { raster.tint(it) in Tint.STATS }, "only the HUD icons and the heart")
+        assertTrue(tinted.size * 4 < lit, "colour stays a small part of the screen")
+    }
+
+    @Test
+    fun worriedBearHasACyanSweatDrop() {
+        val grid = BearRaster.build(BearLook(Age.CUB, Mood.WORRIED), 25)
+        val cyan = (0 until 25).flatMap { y -> (0 until 25).map { x -> x to y } }.filter { (x, y) -> grid.tint(x, y) == Tint.SWEAT }
+        assertEquals(5, cyan.size)
+    }
+}

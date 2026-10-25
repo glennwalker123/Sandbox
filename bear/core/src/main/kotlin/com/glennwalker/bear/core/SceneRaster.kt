@@ -18,8 +18,14 @@ import kotlin.math.max
 class SceneRaster(private val hud: HudStyle = HudStyle.ROW) {
     val dots = ByteArray(WIDTH * HEIGHT)
 
+    /** [Tint] ordinal per dot, alongside [dots]. */
+    val tints = ByteArray(WIDTH * HEIGHT)
+
+    fun tint(i: Int): Tint = Tint.entries[tints[i].toInt()]
+
     fun render(sim: BearSim): ByteArray {
         dots.fill(0)
+        tints.fill(0)
         val items = buildList<Pair<Double, () -> Unit>> {
             add(sim.z to { drawBear(sim) })
             if (sim.ballVisible) add(sim.ballSpot().z to { drawBall(sim) })
@@ -28,7 +34,7 @@ class SceneRaster(private val hud: HudStyle = HudStyle.ROW) {
             }
         }
         items.sortedByDescending { it.first }.forEach { it.second() }
-        sim.hearts.forEach { stamp(Sprites.HEART, it.x - 5, it.y - 8, 2) }
+        sim.hearts.forEach { stamp(Sprites.HEART, it.x - 5, it.y - 8, 2, Tint.HEART) }
         drawHud(sim)
         if (sim.activity != Activity.NONE) ModeBar.draw(sim.activity.title) { x, y, v -> put(x, y, v) }
         return dots
@@ -36,18 +42,21 @@ class SceneRaster(private val hud: HudStyle = HudStyle.ROW) {
 
     private fun put(x: Double, y: Double, v: Int) = put(jsRound(x), jsRound(y), v)
 
-    private fun put(x: Int, y: Int, v: Int) {
+    private fun put(x: Int, y: Int, v: Int, tint: Tint = Tint.NONE) {
         if (x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT || v == 0) return
         dots[y * WIDTH + x] = v.toByte()
+        tints[y * WIDTH + x] = tint.ordinal.toByte()
     }
 
-    private fun stamp(sprite: List<String>, x: Double, y: Double, k: Int = 1) {
+    /** Stamps a sprite; [litTint] colours its '#' dots and [dimTint] its '+' dots. */
+    private fun stamp(sprite: List<String>, x: Double, y: Double, k: Int = 1, litTint: Tint = Tint.NONE, dimTint: Tint = Tint.NONE) {
         val x0 = jsRound(x)
         val y0 = jsRound(y)
         sprite.forEachIndexed { j, row ->
             row.forEachIndexed { i, ch ->
                 val v = when (ch) { '#' -> LIT; '+' -> DIM; 'o' -> HOLE; else -> 0 }
-                if (v != 0) for (b in 0 until k) for (q in 0 until k) put(x0 + i * k + q, y0 + j * k + b, v)
+                val tint = if (v == LIT) litTint else if (v == DIM) dimTint else Tint.NONE
+                if (v != 0) for (b in 0 until k) for (q in 0 until k) put(x0 + i * k + q, y0 + j * k + b, v, tint)
             }
         }
     }
@@ -77,7 +86,7 @@ class SceneRaster(private val hud: HudStyle = HudStyle.ROW) {
         for (j in 0 until n) for (i in 0 until n) {
             val v = bear[i, j]
             if (v == 0) continue
-            put(x0 + i, y0 + j, if (v == BearGrid.FUR) LIT else if (v == BearGrid.INNER_EAR) DIM else HOLE)
+            put(x0 + i, y0 + j, if (v == BearGrid.FUR) LIT else if (v == BearGrid.INNER_EAR) DIM else HOLE, bear.tint(i, j))
         }
     }
 
@@ -119,7 +128,7 @@ class SceneRaster(private val hud: HudStyle = HudStyle.ROW) {
             while (x <= cx + r + 1) {
                 if (inside(x, y)) {
                     val edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1)
-                    put(x, y, if (edge) LIT else DIM)
+                    put(x, y, if (edge) LIT else DIM, if (edge) Tint.NONE else Tint.food(FoodKind.BERRY))
                 }
                 x++
             }
@@ -144,7 +153,8 @@ class SceneRaster(private val hud: HudStyle = HudStyle.ROW) {
             row.forEachIndexed { i, ch ->
                 if (i < eaten) return@forEachIndexed
                 val v = when (ch) { '#' -> LIT; '+' -> DIM; else -> 0 }
-                if (v != 0) for (b in 0 until k) for (q in 0 until k) put(x0 + i * k + q, y0 + j * k + b, v)
+                val tint = if (v == DIM) Tint.food(food.kind) else Tint.NONE
+                if (v != 0) for (b in 0 until k) for (q in 0 until k) put(x0 + i * k + q, y0 + j * k + b, v, tint)
             }
         }
     }
@@ -158,7 +168,7 @@ class SceneRaster(private val hud: HudStyle = HudStyle.ROW) {
         doubleArrayOf(sim.happiness, sim.energy, sim.health).forEachIndexed { n, v ->
             val x0 = 9.0 + n * 38
             val y = 8.0 + if (sim.activity != Activity.NONE) ModeBar.HUD_SHIFT else 0
-            stamp(Sprites.STAT_ICONS[n], x0, y, 2)
+            stamp(Sprites.STAT_ICONS[n], x0, y, 2, Tint.STATS[n])
             val filled = ceil(v / 20 - 0.01).toInt()
             for (i in 0 until 5) {
                 val x = x0 + 12 + i * 3

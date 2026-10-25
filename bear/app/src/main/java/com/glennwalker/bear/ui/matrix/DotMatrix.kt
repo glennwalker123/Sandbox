@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import com.glennwalker.bear.core.Tint
 import com.glennwalker.bear.ui.theme.Led
 
 /**
@@ -53,15 +54,16 @@ fun DrawScope.drawDots(points: List<Offset>, color: Color, layout: DotLayout) {
 }
 
 /**
- * A dot-matrix display. [paint] is called every draw with lists to fill with lit and dim
- * dot positions (as grid columns and rows); everything else shows as an unlit dot.
+ * A dot-matrix display. [paint] is called every draw with a [Dots] to fill with lit and dim
+ * dot positions (grid columns and rows), each with an optional neon [Tint]; everything
+ * else shows as an unlit dot.
  */
 @Composable
 fun DotMatrix(
     cols: Int,
     rows: Int,
     modifier: Modifier = Modifier,
-    paint: (lit: DotList, dim: DotList) -> Unit,
+    paint: (Dots) -> Unit,
 ) {
     // Read through state so a new `paint` redraws without rebuilding the unlit-dot bitmap.
     val currentPaint by rememberUpdatedState(paint)
@@ -69,26 +71,32 @@ fun DotMatrix(
         modifier.drawWithCache {
             val layout = DotLayout(size.width, size.height, cols, rows)
             val unlit = unlitDots(layout)
-            val lit = DotList(layout)
-            val dim = DotList(layout)
+            val dots = Dots(layout)
             onDrawBehind {
-                lit.clear(); dim.clear()
-                currentPaint(lit, dim)
+                dots.clear()
+                currentPaint(dots)
                 drawImage(unlit)
-                drawDots(lit.points, Led.Lit, layout)
-                drawDots(dim.points, Led.Dim, layout)
+                dots.draw(this)
             }
         },
     )
 }
 
-/** Collects dot positions for one frame, skipping any outside the grid. */
-class DotList(private val layout: DotLayout) {
-    val points = ArrayList<Offset>()
+/** Collects one frame's dots, grouped by colour, skipping any outside the grid. */
+class Dots(private val layout: DotLayout) {
+    private val byColor = HashMap<Int, ArrayList<Offset>>()
 
-    fun add(col: Int, row: Int) {
-        if (col in 0 until layout.cols && row in 0 until layout.rows) points += layout.center(col, row)
+    fun lit(col: Int, row: Int, tint: Tint = Tint.NONE) = add(col, row, tint.lit)
+
+    fun dim(col: Int, row: Int, tint: Tint = Tint.NONE) = add(col, row, tint.dim)
+
+    private fun add(col: Int, row: Int, rgb: Int) {
+        if (col in 0 until layout.cols && row in 0 until layout.rows) byColor.getOrPut(rgb) { ArrayList() } += layout.center(col, row)
     }
 
-    fun clear() = points.clear()
+    fun clear() = byColor.values.forEach { it.clear() }
+
+    fun draw(scope: DrawScope) {
+        for ((rgb, points) in byColor) scope.drawDots(points, Color(0xFF000000.toInt() or rgb), layout)
+    }
 }

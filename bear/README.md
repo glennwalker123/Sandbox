@@ -23,6 +23,14 @@ Command line: `./gradlew :app:installDebug` and `./gradlew :core:test`.
 
 Planned: `glyph` (Glyph Toy service) once the dot-matrix look is in.
 
+## Colour
+
+Everything is the four LED colours, plus tiny neon hints from `core/Tint.kt`: pink hearts
+(floating and the happiness icon), an amber energy bolt, a mint health cross, a cyan sweat
+drop, lilac sleep Zs, and the coloured part of each food (berry flesh, apple leaf, honey
+label). Each tint has a lit and a dim shade. Fur, bars and text stay plain. The Glyph
+Matrix mirror stays monochrome, like the hardware.
+
 ## Screens
 
 - **Scene**: the bear wanders the floor with depth. Tap it to pat. The HUD across the top

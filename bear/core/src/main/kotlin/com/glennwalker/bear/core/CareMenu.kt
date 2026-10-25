@@ -17,6 +17,9 @@ object CareMenu {
         else -> Sprites.BALL
     }
 
+    /** The tint for an icon's dim ('+') dots. */
+    fun iconTint(item: Item): Tint = item.food?.let { Tint.food(it) } ?: Tint.NONE
+
     fun label(item: Item, sim: BearSim): String = when {
         item == Item.TALK -> "Talk"
         item == Item.FETCH -> "Play fetch"

@@ -85,13 +85,13 @@ fun CharacterSheetScreen(onBack: () -> Unit) {
 @Composable
 private fun BearCell(entry: CharacterSheet.Entry, age: Age, n: Int, unit: Dp, tick: Int) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        DotMatrix(n, n, Modifier.size(unit * n)) { lit, dim ->
+        DotMatrix(n, n, Modifier.size(unit * n)) { dots ->
             val bear = BearRaster.build(entry.look(age, tick), n)
             val lift = CharacterSheet.lift(entry, tick, n)
             for (y in 0 until n) for (x in 0 until n) {
                 when (bear[x, y]) {
-                    BearGrid.FUR -> lit.add(x, y - lift)
-                    BearGrid.INNER_EAR -> dim.add(x, y - lift)
+                    BearGrid.FUR -> dots.lit(x, y - lift, bear.tint(x, y))
+                    BearGrid.INNER_EAR -> dots.dim(x, y - lift)
                 }
             }
         }

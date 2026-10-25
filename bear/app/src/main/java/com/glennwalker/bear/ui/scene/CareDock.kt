@@ -41,9 +41,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.glennwalker.bear.core.CareMenu
 import com.glennwalker.bear.core.Sprites
+import com.glennwalker.bear.core.Tint
 import com.glennwalker.bear.ui.BearViewModel
 import com.glennwalker.bear.ui.matrix.DotLayout
-import com.glennwalker.bear.ui.matrix.drawDots
+import com.glennwalker.bear.ui.matrix.Dots
 import com.glennwalker.bear.ui.theme.Led
 import kotlin.math.PI
 import kotlin.math.cos
@@ -148,7 +149,7 @@ object CareDock {
                         .clickable(enabled = open && enabled && !holding) { choose(item) },
                     contentAlignment = Alignment.Center,
                 ) {
-                    SpriteIcon(CareMenu.icon(item), Modifier.size(32.dp))
+                    SpriteIcon(CareMenu.icon(item), Modifier.size(32.dp), dimTint = CareMenu.iconTint(item))
                 }
             }
 
@@ -239,17 +240,15 @@ private suspend fun AwaitPointerEventScope.awaitRelease(id: PointerId): Boolean 
 
 /** A small dot-matrix icon: lit and dim dots only, on whatever is behind it. */
 @Composable
-fun SpriteIcon(sprite: List<String>, modifier: Modifier = Modifier) {
+fun SpriteIcon(sprite: List<String>, modifier: Modifier = Modifier, litTint: Tint = Tint.NONE, dimTint: Tint = Tint.NONE) {
     Canvas(modifier) {
         val layout = DotLayout(size.width, size.height, sprite[0].length, sprite.size)
-        val lit = ArrayList<Offset>()
-        val dim = ArrayList<Offset>()
+        val dots = Dots(layout)
         sprite.forEachIndexed { y, row ->
             row.forEachIndexed { x, ch ->
-                if (ch == '#') lit += layout.center(x, y) else if (ch == '+') dim += layout.center(x, y)
+                if (ch == '#') dots.lit(x, y, litTint) else if (ch == '+') dots.dim(x, y, dimTint)
             }
         }
-        drawDots(lit, Led.Lit, layout)
-        drawDots(dim, Led.Dim, layout)
+        dots.draw(this)
     }
 }

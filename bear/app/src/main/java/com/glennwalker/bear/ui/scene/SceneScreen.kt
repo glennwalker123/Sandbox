@@ -185,12 +185,13 @@ private fun SceneDots(vm: BearViewModel) {
                     }
                 }
             },
-    ) { lit, dim ->
+    ) { out ->
         vm.frame // Redraw whenever the simulation moves.
         val dots = vm.raster.render(vm.sim)
         for (y in 0 until Floor.HEIGHT) for (x in 0 until Floor.WIDTH) {
-            val v = dots[y * Floor.WIDTH + x].toInt()
-            if (v == SceneRaster.LIT) lit.add(x, y) else if (SceneRaster.isDim(v, x, y)) dim.add(x, y)
+            val i = y * Floor.WIDTH + x
+            val v = dots[i].toInt()
+            if (v == SceneRaster.LIT) out.lit(x, y, vm.raster.tint(i)) else if (SceneRaster.isDim(v, x, y)) out.dim(x, y, vm.raster.tint(i))
         }
     }
 }
