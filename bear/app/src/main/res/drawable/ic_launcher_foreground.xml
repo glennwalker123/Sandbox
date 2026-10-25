@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder icon: the cub's head. Replaced by a dot-style icon in the polish milestone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Ears -->
+    <path android:fillColor="#DCE4C6" android:pathData="M30,44 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" />
+    <path android:fillColor="#DCE4C6" android:pathData="M78,44 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" />
+    <path android:fillColor="#7D846F" android:pathData="M30,42 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+    <path android:fillColor="#7D846F" android:pathData="M78,42 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+    <!-- Head -->
+    <path android:fillColor="#DCE4C6" android:pathData="M54,60 m-31,0 a31,22 0 1,0 62,0 a31,22 0 1,0 -62,0" />
+    <!-- Eyes -->
+    <path android:fillColor="#1C1F18" android:pathData="M37,52 h9 v9 h-9 z" />
+    <path android:fillColor="#1C1F18" android:pathData="M62,52 h9 v9 h-9 z" />
+    <path android:fillColor="#DCE4C6" android:pathData="M37,52 h3 v3 h-3 z" />
+    <path android:fillColor="#DCE4C6" android:pathData="M68,52 h3 v3 h-3 z" />
+    <!-- Nose and smile -->
+    <path android:fillColor="#1C1F18" android:pathData="M52.5,64 h3 v3 h-3 z" />
+    <path android:fillColor="#1C1F18" android:pathData="M49.5,67 h3 v3 h-3 z" />
+    <path android:fillColor="#1C1F18" android:pathData="M55.5,67 h3 v3 h-3 z" />
+</vector>

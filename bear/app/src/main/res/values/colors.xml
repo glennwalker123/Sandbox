@@ -1,0 +1,6 @@
+<resources>
+    <color name="lit">#DCE4C6</color>
+    <color name="dim">#7D846F</color>
+    <color name="off">#1C1F18</color>
+    <color name="background">#0B0C09</color>
+</resources>
