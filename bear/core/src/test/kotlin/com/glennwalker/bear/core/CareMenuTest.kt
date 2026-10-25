@@ -67,3 +67,38 @@ class CareMenuTest {
         assertEquals(8..17, hudRows.first()..hudRows.last())
     }
 }
+
+class BearTalkTest {
+    @Test
+    fun stateDescribesTheBearInWords() {
+        val s = BearSim(Random(1))
+        s.setStats(happiness = 90.0, energy = 20.0, health = 60.0)
+        val state = BearTalk.state(s)
+        assertTrue("a cub" in state && "wandering" in state && "Happiness high" in state && "energy very low" in state, state)
+        assertTrue(BearTalk.userTurn(s, "  hello  ").endsWith("]\nhello"))
+    }
+
+    @Test
+    fun replyFallsBackGently() {
+        val r = BearTalk.reply(null, null, "weird")
+        assertEquals("…", r.say)
+        assertEquals(BearTalk.OPENERS, r.suggestions)
+        assertEquals(BearTalk.Reaction.NONE, r.reaction)
+        assertEquals(BearTalk.Reaction.SIGH, BearTalk.reply("phew", listOf("a", "b", "c", "d"), "Sigh").reaction)
+        assertEquals(3, BearTalk.reply("x", listOf("a", "b", "c", "d"), null).suggestions.size)
+    }
+
+    @Test
+    fun aReassuringReplySettlesAWorriedBear() {
+        val s = BearSim(Random(1))
+        s.step()
+        s.makeWorry()
+        s.hear(BearTalk.Reaction.SIGH)
+        assertEquals(Mode.SIGH, s.mode)
+        val calm = BearSim(Random(1))
+        val before = calm.happiness
+        calm.hear(BearTalk.Reaction.HAPPY)
+        assertEquals(1, calm.hearts.size)
+        assertEquals(before + Tuning.TALK_HAPPINESS, calm.happiness)
+    }
+}

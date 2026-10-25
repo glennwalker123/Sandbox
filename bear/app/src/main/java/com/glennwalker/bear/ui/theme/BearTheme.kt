@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 
 /** The four LED colours. Everything in the app is drawn from these. */
 object Led {
@@ -11,6 +12,9 @@ object Led {
     val Dim = Color(0xFF7D846F)
     val Off = Color(0xFF1C1F18)
     val Background = Color(0xFF0B0C09)
+
+    /** The bear's voice: a dot-matrix monospace. The app sets the bundled Doto font at start-up. */
+    var Voice: FontFamily = FontFamily.Monospace
 
     /** Stand-in for the dim checker pattern used for floor shadows. */
     val Shadow = Dim.copy(alpha = 0.45f)

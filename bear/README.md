@@ -32,7 +32,14 @@ Planned: `glyph` (Glyph Toy service) once the dot-matrix look is in.
   play fetch (puts the ball in your hand to swipe up and throw; again to put it away) and
   four foods (berry, apple, fish, honey), each with its own effect in `Tuning.FOOD`.
   The menu's contents live in `core/CareMenu.kt`, shared with the web preview.
-- **Debug row**: mode, mood and stats, plus Make it worry, cub/adult and the character sheet.
+- **Talk**: in the care menu. The bear's words appear on the LED screen in Doto, a
+  dot-matrix monospace; you type underneath or tap a suggested reply. Claude writes the
+  bear's side (`core/BearTalk.kt` holds its personality, what it knows about its own state,
+  and the reply format). Kind replies make it hop; reassurance settles a worried bear.
+  The app needs a Claude API key (Debug → Claude key), stored only on the phone. This is
+  the one network call the app makes. The web preview talks through your claude.ai account.
+- **Debug row**: mode, mood and stats, plus Make it worry, cub/adult, the character sheet
+  and the Claude key.
 - **Character sheet**: cub and adult in every mood and pose at N = 52, 25 and 13, animated.
 
 ## Web preview
@@ -53,6 +60,9 @@ throws, sleep and a tired bear. `PrototypeMatchTest` checks the Kotlin port repr
 bear and every scene frame dot for dot. Re-run the script if the prototype changes.
 
 ## Notes
+
+- `app/src/main/res/font/doto_black.ttf` is Doto by the Doto Project Authors, under the
+  SIL Open Font License (`third_party/Doto-OFL.txt`).
 
 - Timing is still the prototype's (everything fast). Real-time stats and saving come in the
   behaviour and persistence milestone.

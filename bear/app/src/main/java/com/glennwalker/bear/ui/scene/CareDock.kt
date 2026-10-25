@@ -65,7 +65,7 @@ object CareDock {
     val HEIGHT = 112.dp
     private val button = 84.dp
     private val option = 60.dp
-    private val radius = 118.dp
+    private val radius = 128.dp
     private val hitRadius = 46.dp
     private val raised = 8.dp
 
@@ -74,14 +74,20 @@ object CareDock {
 
     /** Where each option sits, relative to the button centre: an arc across the top, left to right. */
     private fun optionOffset(i: Int): Pair<Float, Float> {
-        val angle = (160.0 - i * 35.0) * PI / 180
+        val angle = (165.0 - i * 30.0) * PI / 180
         return cos(angle).toFloat() to -sin(angle).toFloat()
     }
 
     private val overshoot = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
 
     @Composable
-    operator fun invoke(vm: BearViewModel, open: Boolean, onOpenChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    operator fun invoke(
+        vm: BearViewModel,
+        open: Boolean,
+        onOpenChange: (Boolean) -> Unit,
+        onTalk: () -> Unit,
+        modifier: Modifier = Modifier,
+    ) {
         val haptics = LocalHapticFeedback.current
         var pressed by remember { mutableStateOf(false) }
         var holding by remember { mutableStateOf(false) }
@@ -94,6 +100,7 @@ object CareDock {
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
             hot = null
             onOpenChange(false)
+            if (item == CareMenu.Item.TALK) onTalk()
         }
 
         // Button centre sits 10 dp + half the button below the top of the dock.

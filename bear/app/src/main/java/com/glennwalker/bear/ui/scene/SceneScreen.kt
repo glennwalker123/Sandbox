@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +18,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.glennwalker.bear.core.Age
 import com.glennwalker.bear.core.Floor
@@ -49,6 +53,8 @@ fun SceneScreen(vm: BearViewModel, onOpenCharacterSheet: () -> Unit) {
     }
 
     var menuOpen by remember { mutableStateOf(false) }
+    var editingKey by remember { mutableStateOf(false) }
+    val chat = vm.chat
 
     Column(
         Modifier
@@ -72,12 +78,17 @@ fun SceneScreen(vm: BearViewModel, onOpenCharacterSheet: () -> Unit) {
                         .pointerInput(Unit) { detectTapGestures { menuOpen = false } },
                 )
             }
-            CareDock(
-                vm = vm,
-                open = menuOpen,
-                onOpenChange = { menuOpen = it },
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
+            if (chat.open) {
+                ChatBar(chat, onDone = { chat.hide() }, modifier = Modifier.align(Alignment.BottomCenter))
+            } else {
+                CareDock(
+                    vm = vm,
+                    open = menuOpen,
+                    onOpenChange = { menuOpen = it },
+                    onTalk = { chat.show() },
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            }
         }
         DebugLine(vm)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -85,17 +96,57 @@ fun SceneScreen(vm: BearViewModel, onOpenCharacterSheet: () -> Unit) {
             SmallButton("Make it worry") { vm.act { makeWorry() } }
             SmallButton(if (vm.age == Age.CUB) "Show adult" else "Show cub") { vm.toggleAge() }
             SmallButton("Character sheet", onOpenCharacterSheet)
+            SmallButton("Claude key") { editingKey = true }
         }
     }
+    if (editingKey) KeyDialog(vm, onClose = { editingKey = false })
+}
+
+/** Enter the Claude API key the bear talks with. Stored on this phone only. */
+@Composable
+private fun KeyDialog(vm: BearViewModel, onClose: () -> Unit) {
+    var key by remember { mutableStateOf(vm.keys.claudeKey.orEmpty()) }
+    AlertDialog(
+        onDismissRequest = onClose,
+        containerColor = Led.Off,
+        title = { Text("Claude API key", color = Led.Lit) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Bear uses Claude to talk. The key stays on this phone and is only sent to Anthropic when you chat.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Led.Dim,
+                )
+                OutlinedTextField(
+                    value = key,
+                    onValueChange = { key = it.trim() },
+                    singleLine = true,
+                    placeholder = { Text("sk-ant-…") },
+                    visualTransformation = PasswordVisualTransformation(),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { vm.keys.claudeKey = key.ifEmpty { null }; onClose() }) { Text("Save", color = Led.Lit) } },
+        dismissButton = { TextButton(onClick = onClose) { Text("Cancel", color = Led.Dim) } },
+    )
 }
 
 @Composable
 private fun SceneCanvas(vm: BearViewModel) {
+    BoxWithConstraints(Modifier.aspectRatio(Floor.WIDTH.toFloat() / Floor.HEIGHT)) {
+        SceneDots(vm)
+        // The bear's words sit just under the HUD.
+        if (vm.chat.open) SpeechPanel(vm.chat, Modifier.align(Alignment.TopCenter).padding(top = maxHeight * 0.11f))
+    }
+}
+
+@Composable
+private fun SceneDots(vm: BearViewModel) {
     DotMatrix(
         cols = Floor.WIDTH,
         rows = Floor.HEIGHT,
         modifier = Modifier
-            .aspectRatio(Floor.WIDTH.toFloat() / Floor.HEIGHT)
+            .fillMaxSize()
             .clip(RoundedCornerShape(20.dp))
             .pointerInput(vm) {
                 awaitEachGesture {

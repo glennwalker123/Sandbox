@@ -33,6 +33,17 @@ android {
     buildFeatures {
         compose = true
     }
+
+    packaging {
+        // Licence and module files that several of the Claude SDK's libraries each ship.
+        resources.excludes += listOf(
+            "META-INF/{AL2.0,LGPL2.1}",
+            "META-INF/DEPENDENCIES",
+            "META-INF/LICENSE*",
+            "META-INF/NOTICE*",
+            "META-INF/versions/9/module-info.class",
+        )
+    }
 }
 
 kotlin {
@@ -41,6 +52,8 @@ kotlin {
 
 dependencies {
     implementation(project(":core"))
+    // Talking with the bear.
+    implementation(libs.anthropic.java)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

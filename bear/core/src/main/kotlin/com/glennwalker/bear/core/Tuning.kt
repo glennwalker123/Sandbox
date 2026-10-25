@@ -22,6 +22,8 @@ object Tuning {
     const val PAT_HAPPINESS = 6.0
     const val SIGH_HAPPINESS = 25.0
     const val FETCH_HAPPINESS = 15.0
+    /** Each reply from the bear in a conversation. */
+    const val TALK_HAPPINESS = 2.0
     const val WORRY_IGNORED_HAPPINESS = -5.0
 
     // Energy.

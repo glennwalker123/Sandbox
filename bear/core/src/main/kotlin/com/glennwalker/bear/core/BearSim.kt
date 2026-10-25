@@ -199,6 +199,15 @@ class BearSim(private val random: Random = Random.Default) {
         if (mode == Mode.WANDER) pause = max(pause, 18)
     }
 
+    /** A happy moment without a pat (something nice was said): a hop and a heart. */
+    fun cheer() {
+        if (mode == Mode.SLEEP || mode == Mode.SIGH || mode == Mode.WORRY) return
+        heartsAt(1)
+        if (hopIndex < 0) hopIndex = 0
+        happyTicks = 20
+        away = false
+    }
+
     /** Drop [kind] somewhere on the floor. Ignored while there is still food out. */
     fun feed(kind: FoodKind = FoodKind.BERRY) {
         if (food != null) return

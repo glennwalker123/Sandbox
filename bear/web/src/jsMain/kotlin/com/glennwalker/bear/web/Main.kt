@@ -4,18 +4,21 @@ import com.glennwalker.bear.core.Age
 import com.glennwalker.bear.core.BearGrid
 import com.glennwalker.bear.core.BearRaster
 import com.glennwalker.bear.core.BearSim
+import com.glennwalker.bear.core.BearTalk
 import com.glennwalker.bear.core.CharacterSheet
 import com.glennwalker.bear.core.CareMenu
 import com.glennwalker.bear.core.Floor
 import com.glennwalker.bear.core.SceneRaster
 import com.glennwalker.bear.core.Sprites
 import com.glennwalker.bear.core.Tuning
+import com.glennwalker.bear.core.hear
 import kotlinx.browser.document
 import kotlinx.browser.window
 import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.HTMLButtonElement
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
+import org.w3c.dom.HTMLInputElement
 import org.w3c.dom.events.Event
 import org.w3c.dom.pointerevents.PointerEvent
 import kotlin.math.PI
@@ -36,7 +39,7 @@ private const val DOT_DIM = 2
 
 /** Care menu: how long to hold before the menu opens, how far options sit from the button, and how close a finger must be to pick one. */
 private const val HOLD_MS = 280
-private const val MENU_RADIUS = 118.0
+private const val MENU_RADIUS = 128.0
 private const val HIT_RADIUS = 46.0
 
 /**
@@ -162,6 +165,153 @@ fun main() {
     }
     byId<HTMLCanvasElement>("glyph").onclick = { sim.pat(); drawScene() }
 
+    // ---- Conversation ----
+    val speech = byId<HTMLElement>("speech")
+    val said = byId<HTMLElement>("said")
+    val bearLine = byId<HTMLElement>("bear-line")
+    val chatBar = byId<HTMLElement>("chat")
+    val careDock = byId<HTMLElement>("care-dock")
+    val chips = byId<HTMLElement>("chips")
+    val sayInput = byId<HTMLInputElement>("say")
+    val sendButton = byId<HTMLButtonElement>("send")
+    Leds(byId("send-icon"), 9, 9, backing = false).drawSprite(Sprites.SEND)
+
+    val turns = mutableListOf<dynamic>()
+    var lastSuggestions = BearTalk.OPENERS
+    var busy = false
+    var typing = -1
+    var sample: dynamic = null
+    window.asDynamic().claude?.use("sample")?.then { s: dynamic -> sample = s }
+
+    fun showLine(text: String, note: Boolean = false) {
+        window.clearInterval(typing)
+        bearLine.classList.toggle("note", note)
+        bearLine.classList.remove("thinking")
+        if (note) { bearLine.textContent = text; return }
+        // Type the words out, a few letters at a time, like a scrolling LED sign.
+        var shown = 0
+        bearLine.textContent = ""
+        typing = window.setInterval({
+            shown = minOf(text.length, shown + 2)
+            bearLine.textContent = text.substring(0, shown)
+            if (shown >= text.length) window.clearInterval(typing)
+        }, 28)
+    }
+
+    fun showThinking() {
+        window.clearInterval(typing)
+        bearLine.classList.remove("note")
+        bearLine.classList.add("thinking")
+        bearLine.innerHTML = "<span>•</span><span>•</span><span>•</span>"
+    }
+
+    lateinit var send: (String) -> Unit
+    fun showSuggestions(list: List<String>) {
+        chips.innerHTML = ""
+        for (text in list) {
+            val chip = document.createElement("button") as HTMLButtonElement
+            chip.type = "button"
+            chip.textContent = text
+            chip.disabled = busy
+            chip.onclick = { send(text) }
+            chips.appendChild(chip)
+        }
+    }
+
+    fun setBusy(value: Boolean) {
+        busy = value
+        sendButton.disabled = value
+        for (i in 0 until chips.children.length) (chips.children.item(i) as HTMLButtonElement).disabled = value
+    }
+
+    fun failureNote(code: String?): String? = when (code) {
+        "cancelled" -> null
+        "not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed" ->
+            "Bear can't talk here: Claude isn't allowed on this page."
+        "rate_limited" -> "That's a lot of talking for now. Try again in a little while."
+        "session_expired" -> "Sign in to Claude again to keep talking."
+        "refused" -> "Bear didn't catch that. Try saying it another way."
+        "invalid_json", "empty_completion" -> "Bear lost its words. Try again."
+        else -> "Bear couldn't hear you just then. Try again."
+    }
+
+    send = send@{ raw ->
+        val text = raw.trim()
+        if (text.isEmpty() || busy) return@send
+        val ask = sample
+        said.textContent = text
+        sayInput.value = ""
+        if (ask == null) {
+            showLine("Talking needs Claude, which isn't available in this view.", note = true)
+            return@send
+        }
+        setBusy(true)
+        showThinking()
+        val userTurn = js("({})")
+        userTurn.role = "user"
+        userTurn.content = BearTalk.userTurn(sim, text)
+        val instructions = js("({})")
+        instructions.role = "user"
+        instructions.content = BearTalk.instructions
+        val input = js("[]")
+        input.push(instructions)
+        for (t in turns) input.push(t)
+        input.push(userTurn)
+        val options = js("({})")
+        options.modelTier = "quick"
+        options.cache = false
+        (ask.json(input, options) as kotlin.js.Promise<dynamic>).then({ data: dynamic ->
+            val list = data?.suggestions
+            val suggestions = if (list != null && js("Array").isArray(list) as Boolean) {
+                (0 until (list.length as Int)).map { i -> list[i].toString() }
+            } else null
+            val reply = BearTalk.reply(data?.say?.toString(), suggestions, data?.react?.toString())
+            val bearTurn = js("({})")
+            bearTurn.role = "assistant"
+            bearTurn.content = JSON.stringify(data)
+            turns.add(userTurn)
+            turns.add(bearTurn)
+            while (turns.size > BearTalk.MAX_TURNS) turns.removeAt(0)
+            sim.hear(reply.reaction)
+            buzz(8)
+            setBusy(false)
+            showLine(reply.say)
+            lastSuggestions = reply.suggestions
+            showSuggestions(reply.suggestions)
+            drawScene()
+        }, { e: dynamic ->
+            setBusy(false)
+            val note = failureNote(e?.code?.toString())
+            if (note != null) showLine(note, note = true) else bearLine.textContent = ""
+        })
+    }
+
+    fun openChat() {
+        speech.hidden = false
+        chatBar.hidden = false
+        careDock.hidden = true
+        said.textContent = ""
+        showLine(BearTalk.greeting(sim))
+        showSuggestions(lastSuggestions)
+    }
+
+    fun closeChat() {
+        window.clearInterval(typing)
+        speech.hidden = true
+        chatBar.hidden = true
+        careDock.hidden = false
+    }
+
+    byId<HTMLElement>("say-form").addEventListener("submit", { e ->
+        e.preventDefault()
+        send(sayInput.value)
+    })
+    byId<HTMLButtonElement>("chat-done").onclick = { closeChat() }
+    sendButton.addEventListener("pointerdown", { _: Event -> if (!busy) sendButton.classList.add("down") })
+    for (type in listOf("pointerup", "pointercancel", "pointerleave")) {
+        sendButton.addEventListener(type, { _: Event -> sendButton.classList.remove("down") })
+    }
+
     // ---- Care button and menu ----
     val sceneView = byId<HTMLElement>("view-scene")
     val care = byId<HTMLButtonElement>("care")
@@ -179,7 +329,7 @@ fun main() {
         option.className = "option"
         option.setAttribute("role", "menuitem")
         // Fan across the top of the button, left to right.
-        val angle = (160.0 - i * 35.0) * PI / 180
+        val angle = (165.0 - i * 30.0) * PI / 180
         option.style.setProperty("--x", "${(cos(angle) * MENU_RADIUS).roundToInt()}px")
         option.style.setProperty("--y", "${(-sin(angle) * MENU_RADIUS).roundToInt()}px")
         option.style.transitionDelay = "${i * 22}ms"
@@ -218,6 +368,7 @@ fun main() {
         CareMenu.choose(item, sim)
         buzz(12)
         setOpen(false)
+        if (item == CareMenu.Item.TALK) openChat()
         drawScene()
     }
 

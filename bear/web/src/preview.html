@@ -1,7 +1,7 @@
 <title>Bear Preview</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@700;900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
 <style>
 /* Layout: one phone-width column. The LED screen, then the care button docked under it. */
 :root {
@@ -16,6 +16,7 @@
   --chip: #171A13;    /* menu options */
   --font-ui: "IBM Plex Sans", system-ui, sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, monospace;
+  --font-led: "Doto", "IBM Plex Mono", ui-monospace, monospace;  /* the bear's voice: a dot-matrix mono */
   color-scheme: dark;
 }
 html, body { background: var(--bg); color: var(--lit); }
@@ -27,7 +28,7 @@ body {
   padding-block: 12px 24px;
   -webkit-tap-highlight-color: transparent;
 }
-.wrap { max-width: 392px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.wrap { width: 100%; max-width: 392px; min-width: 0; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .name { font-family: var(--font-data); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
 .tabs { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
@@ -109,7 +110,48 @@ button:focus-visible { outline: 2px solid var(--dim); outline-offset: 2px; }
 .bear canvas { display: block; }
 .bear span { font-family: var(--font-data); font-size: 10px; color: var(--dim); }
 footer { font-family: var(--font-data); font-size: 11px; color: var(--dim); text-align: center; }
+/* Conversation: the bear's words sit on the LED screen; you type underneath. */
+.speech {
+  position: absolute; left: 12px; right: 12px; top: 11%;
+  background: rgba(11, 12, 9, 0.9); border: 1px solid var(--line); border-radius: 14px;
+  padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px;
+}
+.said { font-family: var(--font-data); font-size: 12px; color: var(--dim); overflow-wrap: anywhere; }
+.said:empty { display: none; }
+.said::before { content: "you · "; }
+.bear-line {
+  margin: 0; font-family: var(--font-led); font-weight: 900; font-size: 21px; line-height: 1.3;
+  color: var(--lit); letter-spacing: 0.02em; overflow-wrap: anywhere; min-height: 1.3em;
+}
+.bear-line.note { font-family: var(--font-data); font-weight: 400; font-size: 13px; color: var(--dim); }
+.thinking span { display: inline-block; animation: blink 1s infinite steps(1); }
+.thinking span:nth-child(2) { animation-delay: 0.2s; }
+.thinking span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 50% { opacity: 0.2; } }
+.chat { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; min-width: 0; }
+.chips { display: flex; gap: 8px; overflow-x: auto; min-width: 0; max-width: 100%; padding-bottom: 2px; scrollbar-width: none; }
+.chips button {
+  flex: none; font-family: var(--font-data); font-size: 13px; padding: 7px 12px;
+  border-radius: 999px; background: var(--chip); white-space: nowrap;
+}
+.chips button:disabled { opacity: 0.4; }
+.say { display: flex; gap: 8px; align-items: center; }
+.say input {
+  flex: 1; min-width: 0; font-family: var(--font-data); font-size: 16px; color: var(--lit);
+  background: var(--chip); border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px;
+}
+.say input::placeholder { color: var(--dim); }
+.say input:focus-visible { outline: 2px solid var(--dim); outline-offset: 1px; }
+.done { font-family: var(--font-data); font-size: 13px; padding: 10px 10px; color: var(--dim); border: 0; }
+.press.small { width: 46px; height: 46px; flex: none; box-shadow: 0 0 0 1px var(--line), 0 6px 12px rgba(0, 0, 0, 0.5); }
+.press.small .face { transform: translateY(-5px); }
+.press.small.down .face { transform: translateY(-1px); }
+.press.small canvas { width: 20px; height: 20px; }
+.press.small:disabled .face { background: var(--chip); }
+.press.small:disabled canvas { opacity: 0.4; }
+
 @media (prefers-reduced-motion: reduce) {
+  .thinking span { animation: none; }
   .option, .menu-label, .press .face, .scrim { transition: none; }
 }
 </style>
@@ -127,8 +169,20 @@ footer { font-family: var(--font-data); font-size: 11px; color: var(--dim); text
     <div class="stage">
       <canvas id="scene" aria-label="Bear scene: tap the bear to pat it, swipe the ball up to throw"></canvas>
       <div class="scrim" id="scrim"></div>
+      <div class="speech" id="speech" aria-live="polite" hidden>
+        <div class="said" id="said"></div>
+        <p class="bear-line" id="bear-line"></p>
+      </div>
     </div>
-    <div class="dock">
+    <div class="chat" id="chat" hidden>
+      <div class="chips" id="chips" aria-label="Suggested replies"></div>
+      <form class="say" id="say-form">
+        <button type="button" class="done" id="chat-done">Done</button>
+        <input id="say" autocomplete="off" maxlength="280" placeholder="Say something…" aria-label="Message to Bear">
+        <button type="submit" class="press small" id="send" aria-label="Send"><span class="face"><canvas id="send-icon"></canvas></span></button>
+      </form>
+    </div>
+    <div class="dock" id="care-dock">
       <div class="menu" id="menu" role="menu" aria-label="Care">
         <div class="menu-label" aria-live="polite"><b id="menu-title">Care</b><span id="menu-hint">Slide to an option and let go</span></div>
       </div>
