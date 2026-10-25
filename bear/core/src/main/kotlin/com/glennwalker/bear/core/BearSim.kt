@@ -133,6 +133,9 @@ class BearSim(private val random: Random = Random.Default) {
         )
     }
 
+    /** Current hop height on the 25-cell reference grid (0 when not hopping). */
+    val hopHeight: Int get() = if (hopIndex >= 0) HOP[hopIndex] else 0
+
     fun bearSize(): Int = max(13, jsRound(52 * sizeAt(z)))
 
     fun bearSpot(): BearSpot {

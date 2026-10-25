@@ -30,6 +30,15 @@ Planned: `glyph` (Glyph Toy service) once the dot-matrix look is in.
   The debug line under the scene shows the current mode, mood and stats.
 - **Character sheet**: cub and adult in every mood and pose at N = 52, 25 and 13, animated.
 
+## Web preview
+
+`web/` compiles the same `core` code to JavaScript and wraps it in one self-contained page
+with the scene, the controls, the Glyph mirror and the character sheet:
+
+    ./gradlew -p web preview    # writes web/build/preview/bear-preview.html
+
+Open the file in any browser. It's a separate build so the Android project stays JVM-only.
+
 ## Matching the prototype
 
 `tools/prototype-frames.mjs` runs the prototype in Node and writes reference data to

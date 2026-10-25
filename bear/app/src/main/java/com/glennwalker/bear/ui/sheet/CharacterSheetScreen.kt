@@ -27,34 +27,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.glennwalker.bear.core.Age
 import com.glennwalker.bear.core.BearGrid
-import com.glennwalker.bear.core.BearLook
+import com.glennwalker.bear.core.CharacterSheet
 import com.glennwalker.bear.core.BearRaster
-import com.glennwalker.bear.core.BearSim
-import com.glennwalker.bear.core.Mood
-import com.glennwalker.bear.core.Sigh
 import com.glennwalker.bear.core.Tuning
 import com.glennwalker.bear.ui.matrix.DotMatrix
 import com.glennwalker.bear.ui.theme.Led
-import kotlin.math.roundToInt
 
-/** One row of the sheet: a mood or pose, animated by the shared tick. */
-private class Entry(val label: String, val look: (Age, Int) -> BearLook, val lift: (Int) -> Int = { 0 })
-
-private val ENTRIES = listOf(
-    Entry("Calm", { age, t -> BearLook(age, Mood.CALM, tick = t) }),
-    Entry("Happy", { age, t -> BearLook(age, Mood.HAPPY, tick = t) }),
-    Entry("Worried", { age, t -> BearLook(age, Mood.WORRIED, tick = t) }),
-    Entry("Sleepy", { age, t -> BearLook(age, Mood.SLEEPY, tick = t) }),
-    Entry("Relieved", { age, t -> BearLook(age, Mood.RELIEVED, tick = t) }),
-    Entry("Hop", { age, t -> BearLook(age, Mood.HAPPY, tick = t) }, lift = { t -> BearSim.HOP.getOrElse(t % 20) { 0 } }),
-    Entry("Walking", { age, t -> BearLook(age, Mood.CALM, step = if ((t / 3) % 2 == 0) 1 else 2, look = 1, tick = t) }),
-    Entry("Walking away", { age, t -> BearLook(age, Mood.CALM, step = if ((t / 3) % 2 == 0) 1 else 2, back = true, tick = t) }),
-    Entry("Carrying the ball", { age, t -> BearLook(age, Mood.CALM, carry = true, tick = t) }),
-    Entry("Sigh", { age, t -> (t % (Tuning.SIGH_TICKS + 20)).let { s -> if (s < Tuning.SIGH_TICKS) Sigh.at(age, s, t) else BearLook(age, Mood.CALM, tick = t) } }),
-)
-
-/** The three sizes the bear is judged at: up close, the Glyph reference size, far away. */
-private val SIZES = intArrayOf(52, 25, 13)
+private val SIZES = CharacterSheet.sizes
 
 @Composable
 fun CharacterSheetScreen(onBack: () -> Unit) {
@@ -89,7 +68,7 @@ fun CharacterSheetScreen(onBack: () -> Unit) {
                             modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                         )
                     }
-                    items(ENTRIES, key = { "${age.name}-${it.label}" }) { entry ->
+                    items(CharacterSheet.entries, key = { "${age.name}-${it.label}" }) { entry ->
                         Column {
                             Text(entry.label, style = MaterialTheme.typography.labelMedium, color = Led.Dim)
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
@@ -104,11 +83,11 @@ fun CharacterSheetScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun BearCell(entry: Entry, age: Age, n: Int, unit: Dp, tick: Int) {
+private fun BearCell(entry: CharacterSheet.Entry, age: Age, n: Int, unit: Dp, tick: Int) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         DotMatrix(n, n, Modifier.size(unit * n)) { lit, dim ->
             val bear = BearRaster.build(entry.look(age, tick), n)
-            val lift = (entry.lift(tick) * n / 25f).roundToInt()
+            val lift = CharacterSheet.lift(entry, tick, n)
             for (y in 0 until n) for (x in 0 until n) {
                 when (bear[x, y]) {
                     BearGrid.FUR -> lit.add(x, y - lift)
