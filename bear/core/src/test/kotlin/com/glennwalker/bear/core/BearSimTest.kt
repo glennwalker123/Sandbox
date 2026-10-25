@@ -75,6 +75,7 @@ class BearSimTest {
     fun swipingTheBallUpThrowsItAndTheBearFetches() {
         val s = sim()
         s.setStats(energy = 90.0, happiness = 90.0)
+        s.startFetch()
         s.step()
         s.pointerDown(Floor.HAND_X, Floor.HAND_Y, 0)
         assertEquals(Mode.READY, s.mode)
@@ -93,6 +94,7 @@ class BearSimTest {
     @Test
     fun slowDragDropsTheBallBackInTheHand() {
         val s = sim()
+        s.startFetch()
         s.step()
         s.pointerDown(Floor.HAND_X, Floor.HAND_Y, 0)
         s.pointerMove(Floor.HAND_X, 185.0, 200)

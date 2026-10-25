@@ -19,7 +19,8 @@ import kotlin.random.Random
 enum class BallState { HAND, DRAG, FLY, REST, CARRIED, GONE }
 
 class Ball(
-    var state: BallState = BallState.HAND,
+    /** The ball only comes out when you choose to play fetch. */
+    var state: BallState = BallState.GONE,
     /** Screen position while in the hand or dragged, and the launch point once thrown. */
     var sx: Double = HAND_X,
     var sy: Double = HAND_Y,
@@ -45,7 +46,12 @@ data class BallSpot(
 
 enum class FoodState { DROP, REST }
 
+enum class FoodKind(val label: String) {
+    BERRY("Berry"), APPLE("Apple"), FISH("Fish"), HONEY("Honey"),
+}
+
 class Food(
+    val kind: FoodKind,
     val x: Double,
     val z: Double,
     var height: Double = 50.0,
@@ -193,11 +199,33 @@ class BearSim(private val random: Random = Random.Default) {
         if (mode == Mode.WANDER) pause = max(pause, 18)
     }
 
-    fun feed() {
+    /** Drop [kind] somewhere on the floor. Ignored while there is still food out. */
+    fun feed(kind: FoodKind = FoodKind.BERRY) {
         if (food != null) return
         val fz = 0.35 + random.nextDouble() * 0.6
         val limit = 22 / depthScale(fz)
-        food = Food(x = (random.nextDouble() * 2 - 1) * limit, z = fz)
+        food = Food(kind, x = (random.nextDouble() * 2 - 1) * limit, z = fz)
+    }
+
+    /** The ball is out: in your hand, in play, or about to come back to your hand. */
+    val fetchOut: Boolean
+        get() = ball.state != BallState.GONE || handTicks > 0
+
+    /** A throw is under way, so the ball can't be put away right now. */
+    val fetchInPlay: Boolean
+        get() = mode in FETCH_MODES || ball.state == BallState.DRAG || ball.state == BallState.FLY || ball.state == BallState.CARRIED
+
+    /** Put the ball in your hand, ready to swipe up and throw. */
+    fun startFetch() {
+        if (fetchOut) return
+        toHand()
+    }
+
+    /** Put the ball away. */
+    fun stopFetch() {
+        if (fetchInPlay) return
+        ball.state = BallState.GONE
+        handTicks = 0
     }
 
     /** Debug: start a worry episode now, waking or interrupting the bear if needed. */
@@ -451,9 +479,10 @@ class BearSim(private val random: Random = Random.Default) {
                     f.bite = max(0.0, (timer - 1) / Tuning.EAT_TICKS.toDouble())
                     if (--timer <= 0) {
                         food = null
-                        health = clamp(health + Tuning.FOOD_HEALTH)
-                        energy = clamp(energy + Tuning.FOOD_ENERGY)
-                        happiness = clamp(happiness + Tuning.FOOD_HAPPINESS)
+                        val effect = Tuning.FOOD.getValue(f.kind)
+                        health = clamp(health + effect.health)
+                        energy = clamp(energy + effect.energy)
+                        happiness = clamp(happiness + effect.happiness)
                         happyTicks = 16; hopIndex = 0
                         mode = Mode.WANDER; pause = 20
                     }
@@ -527,5 +556,7 @@ class BearSim(private val random: Random = Random.Default) {
     companion object {
         /** Hop height per tick, on the 25-cell reference grid. */
         val HOP = intArrayOf(0, 1, 2, 3, 2, 1, 0)
+
+        private val FETCH_MODES = setOf(Mode.READY, Mode.WATCH, Mode.CHASE, Mode.PICK, Mode.RETURN)
     }
 }

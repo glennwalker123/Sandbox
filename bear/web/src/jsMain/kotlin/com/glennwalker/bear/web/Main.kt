@@ -5,8 +5,10 @@ import com.glennwalker.bear.core.BearGrid
 import com.glennwalker.bear.core.BearRaster
 import com.glennwalker.bear.core.BearSim
 import com.glennwalker.bear.core.CharacterSheet
+import com.glennwalker.bear.core.CareMenu
 import com.glennwalker.bear.core.Floor
 import com.glennwalker.bear.core.SceneRaster
+import com.glennwalker.bear.core.Sprites
 import com.glennwalker.bear.core.Tuning
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -17,6 +19,9 @@ import org.w3c.dom.HTMLElement
 import org.w3c.dom.events.Event
 import org.w3c.dom.pointerevents.PointerEvent
 import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.sin
 import kotlin.math.roundToInt
 
 private const val LIT = "#DCE4C6"
@@ -29,11 +34,23 @@ private const val DOT_OFF = 0
 private const val DOT_LIT = 1
 private const val DOT_DIM = 2
 
+/** Care menu: how long to hold before the menu opens, how far options sit from the button, and how close a finger must be to pick one. */
+private const val HOLD_MS = 280
+private const val MENU_RADIUS = 118.0
+private const val HIT_RADIUS = 46.0
+
 /**
  * A canvas of round LEDs: 6 px apart with a 2.4 px radius, as in the prototype.
  * Unlit dots are drawn once; each frame draws only lit and dim dots on top.
  */
-private class Leds(val canvas: HTMLCanvasElement, val cols: Int, val rows: Int, val round: Boolean = false) {
+private class Leds(
+    val canvas: HTMLCanvasElement,
+    val cols: Int,
+    val rows: Int,
+    val round: Boolean = false,
+    /** Icons sit on a control's own colour, so they skip the black backing and unlit dots. */
+    val backing: Boolean = true,
+) {
     private val pitch = 6.0
     private val radius = 2.4
     private val ctx = canvas.context()
@@ -45,12 +62,14 @@ private class Leds(val canvas: HTMLCanvasElement, val cols: Int, val rows: Int, 
         unlit.width = canvas.width
         unlit.height = canvas.height
         val u = unlit.context()
-        u.fillStyle = BACKGROUND
-        u.fillRect(0.0, 0.0, unlit.width.toDouble(), unlit.height.toDouble())
-        u.fillStyle = OFF
-        u.beginPath()
-        for (r in 0 until rows) for (c in 0 until cols) if (shown(c, r)) dot(u, c, r)
-        u.fill()
+        if (backing) {
+            u.fillStyle = BACKGROUND
+            u.fillRect(0.0, 0.0, unlit.width.toDouble(), unlit.height.toDouble())
+            u.fillStyle = OFF
+            u.beginPath()
+            for (r in 0 until rows) for (c in 0 until cols) if (shown(c, r)) dot(u, c, r)
+            u.fill()
+        }
     }
 
     /** The Glyph Matrix is a circle of LEDs inside the 25 × 25 grid. */
@@ -68,6 +87,7 @@ private class Leds(val canvas: HTMLCanvasElement, val cols: Int, val rows: Int, 
     }
 
     fun draw(state: (col: Int, row: Int) -> Int) {
+        ctx.clearRect(0.0, 0.0, canvas.width.toDouble(), canvas.height.toDouble())
         ctx.drawImage(unlit, 0.0, 0.0)
         for ((color, wanted) in listOf(LIT to DOT_LIT, DIM to DOT_DIM)) {
             ctx.fillStyle = color
@@ -76,6 +96,19 @@ private class Leds(val canvas: HTMLCanvasElement, val cols: Int, val rows: Int, 
             ctx.fill()
         }
     }
+}
+
+/** Draws a sprite ('#' lit, '+' dim) onto a matching grid of LEDs. */
+private fun Leds.drawSprite(sprite: List<String>) = draw { x, y ->
+    when (sprite.getOrNull(y)?.getOrNull(x)) {
+        '#' -> DOT_LIT
+        '+' -> DOT_DIM
+        else -> DOT_OFF
+    }
+}
+
+private fun buzz(ms: Int) {
+    try { window.navigator.asDynamic().vibrate(ms) } catch (_: Throwable) {}
 }
 
 private fun HTMLCanvasElement.context() = getContext("2d") as CanvasRenderingContext2D
@@ -121,7 +154,6 @@ fun main() {
     }
 
     // ---- Controls ----
-    byId<HTMLButtonElement>("feed").onclick = { sim.feed(); drawScene() }
     byId<HTMLButtonElement>("worry").onclick = { sim.makeWorry(); drawScene() }
     ageButton.onclick = {
         sim.toggleAge()
@@ -129,6 +161,118 @@ fun main() {
         drawScene()
     }
     byId<HTMLCanvasElement>("glyph").onclick = { sim.pat(); drawScene() }
+
+    // ---- Care button and menu ----
+    val sceneView = byId<HTMLElement>("view-scene")
+    val care = byId<HTMLButtonElement>("care")
+    val menu = byId<HTMLElement>("menu")
+    val menuTitle = byId<HTMLElement>("menu-title")
+    val menuHint = byId<HTMLElement>("menu-hint")
+    Leds(byId("care-icon"), 9, 9, backing = false).drawSprite(Sprites.PAW)
+
+    var open = false
+    var holding = false
+    var hot: CareMenu.Item? = null
+    var holdTimer = -1
+    val options = CareMenu.items.mapIndexed { i, item ->
+        val option = document.createElement("button") as HTMLButtonElement
+        option.className = "option"
+        option.setAttribute("role", "menuitem")
+        // Fan across the top of the button, left to right.
+        val angle = (160.0 - i * 35.0) * PI / 180
+        option.style.setProperty("--x", "${(cos(angle) * MENU_RADIUS).roundToInt()}px")
+        option.style.setProperty("--y", "${(-sin(angle) * MENU_RADIUS).roundToInt()}px")
+        option.style.transitionDelay = "${i * 22}ms"
+        val icon = document.createElement("canvas") as HTMLCanvasElement
+        option.appendChild(icon)
+        Leds(icon, 9, 9, backing = false).drawSprite(CareMenu.icon(item))
+        menu.appendChild(option)
+        item to option
+    }
+
+    fun refreshMenu() {
+        for ((item, option) in options) {
+            option.disabled = !CareMenu.enabled(item, sim)
+            option.classList.toggle("hot", item == hot)
+            option.setAttribute("aria-label", "${CareMenu.label(item, sim)}. ${CareMenu.hint(item, sim)}")
+        }
+        val h = hot
+        menuTitle.textContent = if (h != null) CareMenu.label(h, sim) else "Care"
+        menuHint.textContent = when {
+            h != null -> CareMenu.hint(h, sim)
+            holding -> "Slide to an option and let go"
+            else -> "Choose an option"
+        }
+    }
+
+    fun setOpen(value: Boolean) {
+        open = value
+        if (!value) hot = null
+        sceneView.classList.toggle("menu-open", value)
+        care.setAttribute("aria-expanded", value.toString())
+        refreshMenu()
+    }
+
+    fun choose(item: CareMenu.Item) {
+        if (!CareMenu.enabled(item, sim)) return
+        CareMenu.choose(item, sim)
+        buzz(12)
+        setOpen(false)
+        drawScene()
+    }
+
+    for ((item, option) in options) option.onclick = { if (!holding) choose(item) }
+
+    care.addEventListener("pointerdown", { ev ->
+        val e = ev as PointerEvent
+        e.preventDefault()
+        care.asDynamic().setPointerCapture(e.pointerId)
+        care.classList.add("down")
+        buzz(6)
+        holding = false
+        holdTimer = window.setTimeout({
+            // Held: open (or keep open) and let the finger slide onto an option.
+            holding = true
+            if (!open) setOpen(true) else refreshMenu()
+            buzz(14)
+        }, HOLD_MS)
+    })
+    care.addEventListener("pointermove", { ev ->
+        if (!holding) return@addEventListener
+        val e = ev as PointerEvent
+        var nearest: CareMenu.Item? = null
+        var best = HIT_RADIUS
+        for ((item, option) in options) {
+            val r = option.getBoundingClientRect()
+            val d = hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2))
+            if (d < best) { best = d; nearest = item }
+        }
+        if (nearest != hot) {
+            hot = nearest
+            if (nearest != null) buzz(5)
+            refreshMenu()
+        }
+    })
+    care.addEventListener("pointerup", { _: Event ->
+        window.clearTimeout(holdTimer)
+        care.classList.remove("down")
+        if (holding) {
+            holding = false
+            val h = hot
+            if (h != null && CareMenu.enabled(h, sim)) choose(h) else { hot = null; refreshMenu() }
+        } else {
+            setOpen(!open)
+        }
+    })
+    care.addEventListener("pointercancel", { _: Event ->
+        window.clearTimeout(holdTimer)
+        care.classList.remove("down")
+        holding = false
+    })
+    // Keyboard: Enter or Space toggles the menu (pointer clicks are handled above).
+    care.addEventListener("click", { ev -> if (ev.asDynamic().detail == 0) setOpen(!open) })
+    byId<HTMLElement>("scrim").onclick = { setOpen(false) }
+    document.addEventListener("keydown", { ev -> if (ev.asDynamic().key == "Escape" && open) setOpen(false) })
 
     // ---- Touch on the scene, in scene dots ----
     fun scenePoint(e: PointerEvent): Pair<Double, Double> {
@@ -196,7 +340,6 @@ fun main() {
     }
 
     // ---- Views ----
-    val sceneView = byId<HTMLElement>("view-scene")
     val sceneTab = byId<HTMLButtonElement>("tab-scene")
     val sheetTab = byId<HTMLButtonElement>("tab-sheet")
     var showingSheet = false
@@ -226,7 +369,10 @@ fun main() {
             sim.step()
             if (showingSheet) sheetTick++
         }
-        if (steps > 0) { if (showingSheet) drawSheet() else drawScene() }
+        if (steps > 0) {
+            if (showingSheet) drawSheet() else drawScene()
+            if (open) refreshMenu()
+        }
         window.requestAnimationFrame(::frame)
     }
     window.requestAnimationFrame(::frame)

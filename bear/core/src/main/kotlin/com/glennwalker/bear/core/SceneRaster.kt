@@ -15,7 +15,7 @@ import kotlin.math.max
  * Each dot is [OFF], [LIT], [DIM] or [SHADOW] (dim on a checker pattern). [HOLE] is an unlit
  * dot that was drawn on purpose (a bear feature), so it hides what is behind it.
  */
-class SceneRaster {
+class SceneRaster(private val hud: HudStyle = HudStyle.ROW) {
     val dots = ByteArray(WIDTH * HEIGHT)
 
     fun render(sim: BearSim): ByteArray {
@@ -23,7 +23,9 @@ class SceneRaster {
         val items = buildList<Pair<Double, () -> Unit>> {
             add(sim.z to { drawBear(sim) })
             if (sim.ballVisible) add(sim.ballSpot().z to { drawBall(sim) })
-            sim.food?.let { f -> add(f.z to { drawFood(f) }) }
+            sim.food?.let { f ->
+                add(f.z to { if (f.kind == FoodKind.BERRY) drawFood(f) else drawFoodSprite(f, Sprites.food(f.kind)) })
+            }
         }
         items.sortedByDescending { it.first }.forEach { it.second() }
         sim.hearts.forEach { stamp(Sprites.HEART, it.x - 5, it.y - 8, 2) }
@@ -125,7 +127,47 @@ class SceneRaster {
         if (food.bite > 0.6 && s > 0.65) stamp(Sprites.LEAF, gx.toDouble(), jsRound(cy - r) - 4.0, 2)
     }
 
+    /** Foods other than the berry are drawn from their 9 × 9 icon, doubled up close. Bites come off the left. */
+    private fun drawFoodSprite(food: Food, sprite: List<String>) {
+        val s = sizeAt(food.z)
+        val gx = jsRound(screenX(food.x, food.z))
+        val gy = screenY(food.z)
+        shadow(gx + 0.5, jsRound(gy) + 2.0, (2.4 * s + 0.6) * 1.8, max(1.0, 2 * s))
+        val k = if (s > 0.8) 2 else 1
+        val w = sprite[0].length
+        val eaten = floor((1 - food.bite) * w).toInt()
+        if (eaten >= w) return
+        val x0 = gx - (w * k) / 2
+        val y0 = jsRound(gy - food.height * 2) - sprite.size * k
+        sprite.forEachIndexed { j, row ->
+            row.forEachIndexed { i, ch ->
+                if (i < eaten) return@forEachIndexed
+                val v = when (ch) { '#' -> LIT; '+' -> DIM; else -> 0 }
+                if (v != 0) for (b in 0 until k) for (q in 0 until k) put(x0 + i * k + q, y0 + j * k + b, v)
+            }
+        }
+    }
+
     private fun drawHud(sim: BearSim) {
+        if (hud == HudStyle.STACKED) drawStackedHud(sim) else drawRowHud(sim)
+    }
+
+    /** All three stats on one line: icon, then five thin segments, for each. */
+    private fun drawRowHud(sim: BearSim) {
+        doubleArrayOf(sim.happiness, sim.energy, sim.health).forEachIndexed { n, v ->
+            val x0 = 9.0 + n * 38
+            val y = 8.0
+            stamp(Sprites.STAT_ICONS[n], x0, y, 2)
+            val filled = ceil(v / 20 - 0.01).toInt()
+            for (i in 0 until 5) {
+                val x = x0 + 12 + i * 3
+                if (i < filled) stamp(Sprites.SEGMENT_THIN_FULL, x, y) else stamp(Sprites.SEGMENT_THIN_EMPTY, x, y + 8)
+            }
+        }
+    }
+
+    /** The prototype's HUD: one stat per row. */
+    private fun drawStackedHud(sim: BearSim) {
         doubleArrayOf(sim.happiness, sim.energy, sim.health).forEachIndexed { n, v ->
             val y = 8.0 + n * 14
             stamp(Sprites.STAT_ICONS[n], 8.0, y, 2)
@@ -151,7 +193,9 @@ class SceneRaster {
     }
 }
 
-/** Small hand-drawn sprites, 5 × 5 unless noted. '#' lit, '+' dim. */
+enum class HudStyle { ROW, STACKED }
+
+/** Small hand-drawn sprites. '#' lit, '+' dim, anything else unlit. */
 object Sprites {
     val HEART = listOf(".#.#.", "#####", "#####", ".###.", "..#..")
     val BOLT = listOf("..##.", ".##..", "#####", "..##.", ".##..")
@@ -160,4 +204,81 @@ object Sprites {
     val LEAF = listOf("#.", "##")
     val SEGMENT_FULL = List(10) { "###" }
     val SEGMENT_EMPTY = listOf("+++", "+++")
+    val SEGMENT_THIN_FULL = List(10) { "##" }
+    val SEGMENT_THIN_EMPTY = listOf("++", "++")
+
+    // 9 × 9 icons for the care menu and the foods on the floor.
+    val PAW = listOf(
+        "..#...#..",
+        ".###.###.",
+        "..#...#..",
+        "#.......#",
+        "#..###..#",
+        "..#####..",
+        ".#######.",
+        ".#######.",
+        "..##.##..",
+    )
+    val BALL = listOf(
+        "..#####..",
+        ".#######.",
+        "##++#####",
+        "##+######",
+        "#########",
+        "#########",
+        "#########",
+        ".#######.",
+        "..#####..",
+    )
+    val BERRY = listOf(
+        "....#....",
+        "...##....",
+        "..#####..",
+        ".#+++++#.",
+        "#+++++++#",
+        "#+++++++#",
+        "#+++++++#",
+        ".#+++++#.",
+        "..#####..",
+    )
+    val APPLE = listOf(
+        "....#.++.",
+        "....#++..",
+        ".###.###.",
+        "#########",
+        "#########",
+        "#########",
+        "#########",
+        ".#######.",
+        "..##.##..",
+    )
+    val FISH = listOf(
+        ".........",
+        "....###..",
+        "#..#####.",
+        "##.####.#",
+        "#########",
+        "##.######",
+        "#..#####.",
+        "....###..",
+        ".........",
+    )
+    val HONEY = listOf(
+        "..#####..",
+        "...+++...",
+        ".#######.",
+        "#########",
+        "##+++++##",
+        "##+++++##",
+        "#########",
+        "#########",
+        ".#######.",
+    )
+
+    fun food(kind: FoodKind) = when (kind) {
+        FoodKind.BERRY -> BERRY
+        FoodKind.APPLE -> APPLE
+        FoodKind.FISH -> FISH
+        FoodKind.HONEY -> HONEY
+    }
 }

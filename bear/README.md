@@ -25,9 +25,14 @@ Planned: `glyph` (Glyph Toy service) once the dot-matrix look is in.
 
 ## Screens
 
-- **Scene**: the bear wanders the floor with depth. Tap it to pat; swipe the ball up from
-  the bottom to throw; Feed drops a berry. The HUD shows happiness, energy and health.
-  The debug line under the scene shows the current mode, mood and stats.
+- **Scene**: the bear wanders the floor with depth. Tap it to pat. The HUD across the top
+  shows happiness, energy and health on one line.
+- **Care button**: the raised paw button under the screen. Press and hold to fan out the
+  menu, slide onto an option and let go; or tap to open it and tap an option. Options:
+  play fetch (puts the ball in your hand to swipe up and throw; again to put it away) and
+  four foods (berry, apple, fish, honey), each with its own effect in `Tuning.FOOD`.
+  The menu's contents live in `core/CareMenu.kt`, shared with the web preview.
+- **Debug row**: mode, mood and stats, plus Make it worry, cub/adult and the character sheet.
 - **Character sheet**: cub and adult in every mood and pose at N = 52, 25 and 13, animated.
 
 ## Web preview

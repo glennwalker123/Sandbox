@@ -3,7 +3,10 @@ package com.glennwalker.bear.ui.scene
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,11 +18,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +48,8 @@ fun SceneScreen(vm: BearViewModel, onOpenCharacterSheet: () -> Unit) {
         while (true) withFrameMillis { vm.onFrame(it) }
     }
 
+    var menuOpen by remember { mutableStateOf(false) }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -49,19 +57,34 @@ fun SceneScreen(vm: BearViewModel, onOpenCharacterSheet: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            SceneCanvas(vm)
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    SceneCanvas(vm)
+                }
+                Spacer(Modifier.height(CareDock.HEIGHT))
+            }
+            if (menuOpen) {
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .background(Led.Background.copy(alpha = 0.6f))
+                        .pointerInput(Unit) { detectTapGestures { menuOpen = false } },
+                )
+            }
+            CareDock(
+                vm = vm,
+                open = menuOpen,
+                onOpenChange = { menuOpen = it },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LedButton("Feed") { vm.act { feed() } }
-            LedButton("Make it worry") { vm.act { makeWorry() } }
-            LedButton(if (vm.age == Age.CUB) "Show adult" else "Show cub") { vm.toggleAge() }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            DebugLine(vm)
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = onOpenCharacterSheet) { Text("Character sheet", color = Led.Dim) }
+        DebugLine(vm)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("DEBUG", style = MaterialTheme.typography.labelSmall, color = Led.Dim)
+            SmallButton("Make it worry") { vm.act { makeWorry() } }
+            SmallButton(if (vm.age == Age.CUB) "Show adult" else "Show cub") { vm.toggleAge() }
+            SmallButton("Character sheet", onOpenCharacterSheet)
         }
     }
 }
@@ -121,8 +144,8 @@ private fun DebugLine(vm: BearViewModel) {
 }
 
 @Composable
-fun LedButton(label: String, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick, shape = RoundedCornerShape(8.dp)) {
-        Text(label, color = Led.Lit)
+private fun SmallButton(label: String, onClick: () -> Unit) {
+    TextButton(onClick = onClick, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = Led.Dim)
     }
 }

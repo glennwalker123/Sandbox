@@ -27,6 +27,7 @@ val preview by tasks.registering {
     val template = layout.projectDirectory.file("src/preview.html")
     val output = layout.buildDirectory.file("preview/bear-preview.html")
     inputs.file(template)
+    inputs.files(compiled)
     outputs.file(output)
     doLast {
         val dir = compiled.get().outputs.files.files.first { it.isDirectory }

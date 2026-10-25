@@ -22,7 +22,6 @@ object Tuning {
     const val PAT_HAPPINESS = 6.0
     const val SIGH_HAPPINESS = 25.0
     const val FETCH_HAPPINESS = 15.0
-    const val FOOD_HAPPINESS = 6.0
     const val WORRY_IGNORED_HAPPINESS = -5.0
 
     // Energy.
@@ -30,7 +29,6 @@ object Tuning {
     const val ENERGY_WALK_COST = 0.012
     const val ENERGY_RUN_COST = 0.16
     const val ENERGY_SLEEP_GAIN = 0.35
-    const val FOOD_ENERGY = 8.0
     const val WORRY_BUTTON_WAKE_ENERGY = 20.0
     const val SLEEP_BELOW_ENERGY = 12.0
     const val WAKE_AT_ENERGY = 95.0
@@ -42,7 +40,6 @@ object Tuning {
     const val HEALTH_GAIN_WHEN_WELL = 0.008
     const val WELL_HAPPINESS = 50.0
     const val WELL_ENERGY = 40.0
-    const val FOOD_HEALTH = 25.0
     const val SLOW_BELOW_HEALTH = 30.0
 
     // Mood.
@@ -87,6 +84,14 @@ object Tuning {
     const val BORED_TICKS = 50
     const val TIRED_TICKS = 45
 
-    // Food.
+    // Food. What each food adds once eaten. The berry is the prototype's food.
     const val EAT_TICKS = 26
+    val FOOD = mapOf(
+        FoodKind.BERRY to FoodEffect(health = 25.0, energy = 8.0, happiness = 6.0),
+        FoodKind.APPLE to FoodEffect(health = 20.0, energy = 5.0, happiness = 4.0),
+        FoodKind.FISH to FoodEffect(health = 30.0, energy = 15.0, happiness = 8.0),
+        FoodKind.HONEY to FoodEffect(health = 5.0, energy = 10.0, happiness = 20.0),
+    )
 }
+
+data class FoodEffect(val health: Double, val energy: Double, val happiness: Double)

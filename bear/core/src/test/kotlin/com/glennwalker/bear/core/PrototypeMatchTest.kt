@@ -76,8 +76,9 @@ class PrototypeMatchTest {
             i += 201
         }
 
-        val sim = BearSim(random)
-        val raster = SceneRaster()
+        // The prototype starts with the ball in hand and the stats stacked down the left.
+        val sim = BearSim(random).apply { startFetch() }
+        val raster = SceneRaster(HudStyle.STACKED)
         for (tick in 1..ticks) {
             for (a in actions[tick].orEmpty()) {
                 val p = a.split(" ")
