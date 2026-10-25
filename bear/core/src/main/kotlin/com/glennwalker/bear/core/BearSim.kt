@@ -226,15 +226,49 @@ class BearSim(private val random: Random = Random.Default) {
 
     /** Put the ball in your hand, ready to swipe up and throw. */
     fun startFetch() {
+        putAwayWhenBack = false
         if (fetchOut) return
         toHand()
     }
 
-    /** Put the ball away. */
+    /** Put the ball away now, or as soon as it's back if a throw is under way. */
     fun stopFetch() {
-        if (fetchInPlay) return
+        if (fetchInPlay) {
+            putAwayWhenBack = true
+            return
+        }
         ball.state = BallState.GONE
         handTicks = 0
+    }
+
+    private var putAwayWhenBack = false
+
+    // ---- Activities: modes you enter from the care menu and leave with the close box ----
+
+    /** The activity under way, shown as a title bar across the top of the screen. */
+    var activity = Activity.NONE
+        private set
+
+    /** Throws and successful fetches since fetch began. */
+    var throws = 0
+        private set
+    var fetched = 0
+        private set
+
+    fun startActivity(next: Activity) {
+        if (activity == next) return
+        endActivity()
+        activity = next
+        if (next == Activity.FETCH) {
+            throws = 0
+            fetched = 0
+            startFetch()
+        }
+    }
+
+    fun endActivity() {
+        if (activity == Activity.FETCH) stopFetch()
+        activity = Activity.NONE
     }
 
     /** Debug: start a worry episode now, waking or interrupting the bear if needed. */
@@ -264,6 +298,11 @@ class BearSim(private val random: Random = Random.Default) {
     private var drag: Drag? = null
 
     fun pointerDown(ux: Double, uy: Double, timeMs: Long) {
+        if (activity != Activity.NONE && ModeBar.closeHit(ux, uy)) {
+            drag = null
+            endActivity()
+            return
+        }
         val d = Drag(ux, uy, grab = false).also { it.points.addLast(Triple(ux, uy, timeMs)) }
         drag = d
         if (mode == Mode.SLEEP || mode == Mode.WORRY || mode == Mode.SIGH) return
@@ -316,6 +355,7 @@ class BearSim(private val random: Random = Random.Default) {
             arcHeight = 16 + tz * 14
         }
         mode = Mode.WATCH
+        throws++
         if (hopIndex < 0) hopIndex = 0
     }
 
@@ -462,6 +502,7 @@ class BearSim(private val random: Random = Random.Default) {
                     ball.tx = x + dir * 7
                     ball.tz = z - 0.05
                     handTicks = 18; happyTicks = 24; hopIndex = 0
+                    fetched++
                     happiness = clamp(happiness + Tuning.FETCH_HAPPINESS)
                     heartsAt(2)
                 }
@@ -537,6 +578,11 @@ class BearSim(private val random: Random = Random.Default) {
     }
 
     private fun toHand() {
+        if (putAwayWhenBack) {
+            putAwayWhenBack = false
+            ball.state = BallState.GONE
+            return
+        }
         ball.state = BallState.HAND
         ball.sx = HAND_X
         ball.sy = HAND_Y

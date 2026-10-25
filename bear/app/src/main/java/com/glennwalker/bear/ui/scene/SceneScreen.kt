@@ -35,8 +35,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.glennwalker.bear.core.Activity
 import com.glennwalker.bear.core.Age
+import com.glennwalker.bear.core.CareMenu
 import com.glennwalker.bear.core.Floor
 import com.glennwalker.bear.core.SceneRaster
 import com.glennwalker.bear.ui.BearViewModel
@@ -55,6 +60,9 @@ fun SceneScreen(vm: BearViewModel, onOpenCharacterSheet: () -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
     var editingKey by remember { mutableStateOf(false) }
     val chat = vm.chat
+    vm.frame // The activity can end from the close box, inside the scene.
+    val activity = vm.sim.activity
+    LaunchedEffect(activity) { if (activity == Activity.TALK) chat.show() }
 
     Column(
         Modifier
@@ -78,14 +86,18 @@ fun SceneScreen(vm: BearViewModel, onOpenCharacterSheet: () -> Unit) {
                         .pointerInput(Unit) { detectTapGestures { menuOpen = false } },
                 )
             }
-            if (chat.open) {
-                ChatBar(chat, onDone = { chat.hide() }, modifier = Modifier.align(Alignment.BottomCenter))
-            } else {
-                CareDock(
+            // The bottom area follows the activity; the close box in the title bar ends it.
+            when (activity) {
+                Activity.TALK -> ChatBar(chat, modifier = Modifier.align(Alignment.BottomCenter).height(CareDock.HEIGHT))
+                Activity.FETCH -> Text(
+                    CareMenu.fetchStatus(vm.sim),
+                    style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 14.sp, color = Led.Dim),
+                    modifier = Modifier.align(Alignment.BottomCenter).height(CareDock.HEIGHT).padding(top = 14.dp),
+                )
+                Activity.NONE -> CareDock(
                     vm = vm,
                     open = menuOpen,
                     onOpenChange = { menuOpen = it },
-                    onTalk = { chat.show() },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
@@ -136,7 +148,8 @@ private fun SceneCanvas(vm: BearViewModel) {
     BoxWithConstraints(Modifier.aspectRatio(Floor.WIDTH.toFloat() / Floor.HEIGHT)) {
         SceneDots(vm)
         // The bear's words sit just under the HUD.
-        if (vm.chat.open) SpeechPanel(vm.chat, Modifier.align(Alignment.TopCenter).padding(top = maxHeight * 0.11f))
+        vm.frame
+        if (vm.sim.activity == Activity.TALK) SpeechPanel(vm.chat, Modifier.align(Alignment.TopCenter).padding(top = maxHeight * 0.16f))
     }
 }
 

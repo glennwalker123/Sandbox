@@ -16,30 +16,43 @@ class CareMenuTest {
     }
 
     @Test
-    fun ballStaysAwayUntilFetchIsChosen() {
+    fun fetchIsAModeWithATitleBar() {
         val s = sim()
         assertFalse(s.ballVisible)
-        assertEquals("Play fetch", CareMenu.label(CareMenu.Item.FETCH, s))
         CareMenu.choose(CareMenu.Item.FETCH, s)
+        assertEquals(Activity.FETCH, s.activity)
         assertEquals(BallState.HAND, s.ball.state)
-        assertEquals("Put the ball away", CareMenu.label(CareMenu.Item.FETCH, s))
-        CareMenu.choose(CareMenu.Item.FETCH, s)
+        val dots = SceneRaster().render(s)
+        assertTrue((ModeBar.LEFT..ModeBar.RIGHT).all { x -> dots[ModeBar.TOP * Floor.WIDTH + x].toInt() == SceneRaster.LIT }, "bar border")
+        assertEquals("Swipe the ball up to throw it", CareMenu.fetchStatus(s))
+        s.endActivity()
+        assertEquals(Activity.NONE, s.activity)
         assertFalse(s.fetchOut)
     }
 
     @Test
-    fun ballCannotBePutAwayMidThrow() {
+    fun theCloseBoxEndsTheMode() {
         val s = sim()
-        s.setStats(energy = 90.0)
+        CareMenu.choose(CareMenu.Item.TALK, s)
+        assertEquals(Activity.TALK, s.activity)
+        s.pointerDown(108.0, 7.0, 0)
+        assertEquals(Activity.NONE, s.activity)
+    }
+
+    @Test
+    fun leavingMidThrowPutsTheBallAwayOnceItsBack() {
+        val s = sim()
+        s.setStats(energy = 90.0, happiness = 90.0)
         CareMenu.choose(CareMenu.Item.FETCH, s)
         s.step()
         s.pointerDown(Floor.HAND_X, Floor.HAND_Y, 0)
         s.pointerMove(Floor.HAND_X, 150.0, 40)
         s.pointerUp(Floor.HAND_X, 120.0, 70)
-        assertTrue(s.fetchInPlay)
-        assertFalse(CareMenu.enabled(CareMenu.Item.FETCH, s))
-        CareMenu.choose(CareMenu.Item.FETCH, s)
+        assertEquals(1, s.throws)
+        s.endActivity()
         assertEquals(BallState.FLY, s.ball.state)
+        s.runUntil { !fetchOut }
+        assertEquals(BallState.GONE, s.ball.state)
     }
 
     @Test

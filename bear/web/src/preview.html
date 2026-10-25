@@ -112,7 +112,7 @@ button:focus-visible { outline: 2px solid var(--dim); outline-offset: 2px; }
 footer { font-family: var(--font-data); font-size: 11px; color: var(--dim); text-align: center; }
 /* Conversation: the bear's words sit on the LED screen; you type underneath. */
 .speech {
-  position: absolute; left: 12px; right: 12px; top: 11%;
+  position: absolute; left: 12px; right: 12px; top: 16%;
   background: rgba(11, 12, 9, 0.9); border: 1px solid var(--line); border-radius: 14px;
   padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px;
 }
@@ -128,7 +128,9 @@ footer { font-family: var(--font-data); font-size: 11px; color: var(--dim); text
 .thinking span:nth-child(2) { animation-delay: 0.2s; }
 .thinking span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes blink { 50% { opacity: 0.2; } }
-.chat { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; min-width: 0; }
+.chat { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; min-width: 0; min-height: 112px; }
+.fetch-bar { min-height: 112px; display: flex; align-items: flex-start; justify-content: center; padding-top: 14px; }
+.fetch-bar p { margin: 0; font-family: var(--font-data); font-size: 14px; color: var(--dim); font-variant-numeric: tabular-nums; }
 .chips { display: flex; gap: 8px; overflow-x: auto; min-width: 0; max-width: 100%; padding-bottom: 2px; scrollbar-width: none; }
 .chips button {
   flex: none; font-family: var(--font-data); font-size: 13px; padding: 7px 12px;
@@ -177,10 +179,12 @@ footer { font-family: var(--font-data); font-size: 11px; color: var(--dim); text
     <div class="chat" id="chat" hidden>
       <div class="chips" id="chips" aria-label="Suggested replies"></div>
       <form class="say" id="say-form">
-        <button type="button" class="done" id="chat-done">Done</button>
         <input id="say" autocomplete="off" maxlength="280" placeholder="Say something…" aria-label="Message to Bear">
         <button type="submit" class="press small" id="send" aria-label="Send"><span class="face"><canvas id="send-icon"></canvas></span></button>
       </form>
+    </div>
+    <div class="fetch-bar" id="fetch-bar" hidden>
+      <p id="fetch-status">Swipe the ball up to throw it</p>
     </div>
     <div class="dock" id="care-dock">
       <div class="menu" id="menu" role="menu" aria-label="Care">

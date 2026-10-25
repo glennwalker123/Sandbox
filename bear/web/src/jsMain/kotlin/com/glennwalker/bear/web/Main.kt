@@ -1,5 +1,6 @@
 package com.glennwalker.bear.web
 
+import com.glennwalker.bear.core.Activity
 import com.glennwalker.bear.core.Age
 import com.glennwalker.bear.core.BearGrid
 import com.glennwalker.bear.core.BearRaster
@@ -131,6 +132,8 @@ fun main() {
     val status = byId<HTMLElement>("status")
     val ageButton = byId<HTMLButtonElement>("age")
 
+    var syncActivity: () -> Unit = {}
+
     fun drawScene() {
         val dots = raster.render(sim)
         scene.draw { x, y ->
@@ -152,6 +155,7 @@ fun main() {
                 else -> DOT_OFF
             }
         }
+        syncActivity()
         status.textContent = "${sim.mode.name.lowercase()} · ${sim.look().mood.name.lowercase()} · " +
             "♥ ${sim.happiness.roundToInt()}  ⚡ ${sim.energy.roundToInt()}  ✚ ${sim.health.roundToInt()}"
     }
@@ -286,27 +290,33 @@ fun main() {
         })
     }
 
-    fun openChat() {
-        speech.hidden = false
-        chatBar.hidden = false
-        careDock.hidden = true
+    fun startChat() {
         said.textContent = ""
         showLine(BearTalk.greeting(sim))
         showSuggestions(lastSuggestions)
     }
 
-    fun closeChat() {
-        window.clearInterval(typing)
-        speech.hidden = true
-        chatBar.hidden = true
-        careDock.hidden = false
+    // ---- Activities: the bottom area follows the mode; the close box in the title bar ends it ----
+    val fetchBar = byId<HTMLElement>("fetch-bar")
+    val fetchStatus = byId<HTMLElement>("fetch-status")
+    var shownActivity = Activity.NONE
+    syncActivity = {
+        val now = sim.activity
+        if (now != shownActivity) {
+            shownActivity = now
+            careDock.hidden = now != Activity.NONE
+            chatBar.hidden = now != Activity.TALK
+            speech.hidden = now != Activity.TALK
+            fetchBar.hidden = now != Activity.FETCH
+            if (now == Activity.TALK) startChat() else window.clearInterval(typing)
+        }
+        if (now == Activity.FETCH) fetchStatus.textContent = CareMenu.fetchStatus(sim)
     }
 
     byId<HTMLElement>("say-form").addEventListener("submit", { e ->
         e.preventDefault()
         send(sayInput.value)
     })
-    byId<HTMLButtonElement>("chat-done").onclick = { closeChat() }
     sendButton.addEventListener("pointerdown", { _: Event -> if (!busy) sendButton.classList.add("down") })
     for (type in listOf("pointerup", "pointercancel", "pointerleave")) {
         sendButton.addEventListener(type, { _: Event -> sendButton.classList.remove("down") })
@@ -368,7 +378,6 @@ fun main() {
         CareMenu.choose(item, sim)
         buzz(12)
         setOpen(false)
-        if (item == CareMenu.Item.TALK) openChat()
         drawScene()
     }
 

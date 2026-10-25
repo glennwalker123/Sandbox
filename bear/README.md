@@ -32,6 +32,13 @@ Planned: `glyph` (Glyph Toy service) once the dot-matrix look is in.
   play fetch (puts the ball in your hand to swipe up and throw; again to put it away) and
   four foods (berry, apple, fish, honey), each with its own effect in `Tuning.FOOD`.
   The menu's contents live in `core/CareMenu.kt`, shared with the web preview.
+- **Activities**: Talk and Fetch are modes. Choosing one from the care menu puts a title
+  bar across the top of the LED screen (lit borders, dim stripes, the name in a 5 × 7 dot
+  font, a close box in the corner; `core/ModeBar.kt`) and swaps the paw button for that
+  mode's controls. Tap the close box to leave. Leaving fetch mid-throw puts the ball away
+  once the bear brings it back. Food stays a one-off.
+- **Fetch**: the ball sits in your hand; swipe it up to throw. Under the screen, a tally
+  of throws and catches.
 - **Talk**: in the care menu. The bear's words appear on the LED screen in Doto, a
   dot-matrix monospace; you type underneath or tap a suggested reply. Claude writes the
   bear's side (`core/BearTalk.kt` holds its personality, what it knows about its own state,

@@ -30,6 +30,7 @@ class SceneRaster(private val hud: HudStyle = HudStyle.ROW) {
         items.sortedByDescending { it.first }.forEach { it.second() }
         sim.hearts.forEach { stamp(Sprites.HEART, it.x - 5, it.y - 8, 2) }
         drawHud(sim)
+        if (sim.activity != Activity.NONE) ModeBar.draw(sim.activity.title) { x, y, v -> put(x, y, v) }
         return dots
     }
 
@@ -156,7 +157,7 @@ class SceneRaster(private val hud: HudStyle = HudStyle.ROW) {
     private fun drawRowHud(sim: BearSim) {
         doubleArrayOf(sim.happiness, sim.energy, sim.health).forEachIndexed { n, v ->
             val x0 = 9.0 + n * 38
-            val y = 8.0
+            val y = 8.0 + if (sim.activity != Activity.NONE) ModeBar.HUD_SHIFT else 0
             stamp(Sprites.STAT_ICONS[n], x0, y, 2)
             val filled = ceil(v / 20 - 0.01).toInt()
             for (i in 0 until 5) {

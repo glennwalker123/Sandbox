@@ -20,8 +20,6 @@ interface KeyStore {
 
 /** The conversation with the bear: what's on screen, and the turns sent to Claude. */
 class Chat(private val sim: BearSim, private val keys: KeyStore, private val scope: CoroutineScope, private val onChange: () -> Unit) {
-    var open by mutableStateOf(false)
-        private set
     var bearLine by mutableStateOf("")
         private set
     /** True when [bearLine] is a note from the app rather than the bear speaking. */
@@ -38,14 +36,10 @@ class Chat(private val sim: BearSim, private val keys: KeyStore, private val sco
     private var brain: ClaudeBrain? = null
     private var brainKey: String? = null
 
+    /** Called when Talk begins: a fresh greeting. Earlier turns are kept for context. */
     fun show() {
-        open = true
         youSaid = ""
         say(BearTalk.greeting(sim))
-    }
-
-    fun hide() {
-        open = false
     }
 
     fun send(raw: String) {

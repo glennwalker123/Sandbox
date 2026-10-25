@@ -14,7 +14,6 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -28,7 +27,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -118,7 +116,7 @@ private fun ThinkingDots() {
 
 /** Where you talk: suggested replies, a text field and a raised send button. */
 @Composable
-fun ChatBar(chat: Chat, onDone: () -> Unit, modifier: Modifier = Modifier) {
+fun ChatBar(chat: Chat, modifier: Modifier = Modifier) {
     var draft by remember { mutableStateOf("") }
     fun send(text: String) {
         chat.send(text)
@@ -141,9 +139,6 @@ fun ChatBar(chat: Chat, onDone: () -> Unit, modifier: Modifier = Modifier) {
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = onDone, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                Text("Done", style = TextStyle(fontFamily = Mono, fontSize = 13.sp, color = Led.Dim))
-            }
             BasicTextField(
                 value = draft,
                 onValueChange = { draft = it.take(280) },

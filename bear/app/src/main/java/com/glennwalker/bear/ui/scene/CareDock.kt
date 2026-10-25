@@ -85,7 +85,6 @@ object CareDock {
         vm: BearViewModel,
         open: Boolean,
         onOpenChange: (Boolean) -> Unit,
-        onTalk: () -> Unit,
         modifier: Modifier = Modifier,
     ) {
         val haptics = LocalHapticFeedback.current
@@ -100,7 +99,6 @@ object CareDock {
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
             hot = null
             onOpenChange(false)
-            if (item == CareMenu.Item.TALK) onTalk()
         }
 
         // Button centre sits 10 dp + half the button below the top of the dock.

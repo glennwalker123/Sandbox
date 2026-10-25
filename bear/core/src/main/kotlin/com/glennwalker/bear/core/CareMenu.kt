@@ -19,20 +19,14 @@ object CareMenu {
 
     fun label(item: Item, sim: BearSim): String = when {
         item == Item.TALK -> "Talk"
-        item == Item.FETCH -> if (sim.fetchOut) "Put the ball away" else "Play fetch"
+        item == Item.FETCH -> "Play fetch"
         else -> item.food!!.label
     }
 
     /** One line under the label saying what choosing it does, or why it can't be chosen now. */
     fun hint(item: Item, sim: BearSim): String {
         if (item == Item.TALK) return if (sim.mode == Mode.SLEEP) "Bear is napping, but will listen" else "Have a chat with Bear"
-        if (item == Item.FETCH) {
-            return when {
-                sim.fetchInPlay -> "Wait for the ball to come back"
-                sim.fetchOut -> "Back in the toy box"
-                else -> "Swipe the ball up to throw it"
-            }
-        }
+        if (item == Item.FETCH) return "Swipe the ball up to throw it"
         if (sim.food != null) return "Still has food to finish"
         return when (item.food!!) {
             FoodKind.BERRY -> "A light snack"
@@ -42,9 +36,15 @@ object CareMenu {
         }
     }
 
+    /** The line under the screen while playing fetch. */
+    fun fetchStatus(sim: BearSim): String = when {
+        sim.throws == 0 -> "Swipe the ball up to throw it"
+        else -> "${sim.throws} ${if (sim.throws == 1) "throw" else "throws"} · ${sim.fetched} brought back"
+    }
+
     fun enabled(item: Item, sim: BearSim): Boolean = when (item) {
         Item.TALK -> true
-        Item.FETCH -> !sim.fetchInPlay
+        Item.FETCH -> true
         else -> sim.food == null
     }
 
@@ -52,10 +52,9 @@ object CareMenu {
         if (!enabled(item, sim)) return
         val food = item.food
         when {
-            item == Item.TALK -> {} // The screen opens the conversation.
+            item == Item.TALK -> sim.startActivity(Activity.TALK)
             food != null -> sim.feed(food)
-            sim.fetchOut -> sim.stopFetch()
-            else -> sim.startFetch()
+            else -> sim.startActivity(Activity.FETCH)
         }
     }
 }

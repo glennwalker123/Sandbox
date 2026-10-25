@@ -2,6 +2,9 @@ package com.glennwalker.bear.core
 
 enum class Age { CUB, ADULT }
 
+/** An activity you do with the bear, entered from the care menu and left with the close box. */
+enum class Activity(val title: String) { NONE(""), TALK("TALK"), FETCH("FETCH") }
+
 enum class Mood { CALM, HAPPY, WORRIED, SLEEPY, RELIEVED }
 
 /** What the bear is doing. Mirrors the prototype's `mode`. */
