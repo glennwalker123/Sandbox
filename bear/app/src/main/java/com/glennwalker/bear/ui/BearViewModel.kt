@@ -7,11 +7,13 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.glennwalker.bear.core.Age
 import com.glennwalker.bear.core.BearSim
+import com.glennwalker.bear.core.SceneRaster
 import com.glennwalker.bear.core.Tuning
 
 /** Holds the one running simulation. [frame] changes whenever the scene needs redrawing. */
 class BearViewModel : ViewModel() {
     val sim = BearSim()
+    val raster = SceneRaster()
 
     var frame by mutableIntStateOf(0)
         private set

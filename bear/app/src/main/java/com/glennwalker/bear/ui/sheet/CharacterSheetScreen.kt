@@ -1,6 +1,5 @@
 package com.glennwalker.bear.ui.sheet
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -24,16 +23,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.glennwalker.bear.core.Age
+import com.glennwalker.bear.core.BearGrid
 import com.glennwalker.bear.core.BearLook
+import com.glennwalker.bear.core.BearRaster
 import com.glennwalker.bear.core.BearSim
 import com.glennwalker.bear.core.Mood
 import com.glennwalker.bear.core.Sigh
 import com.glennwalker.bear.core.Tuning
-import com.glennwalker.bear.ui.bear.drawBear
+import com.glennwalker.bear.ui.matrix.DotMatrix
 import com.glennwalker.bear.ui.theme.Led
 import kotlin.math.roundToInt
 
@@ -106,10 +106,15 @@ fun CharacterSheetScreen(onBack: () -> Unit) {
 @Composable
 private fun BearCell(entry: Entry, age: Age, n: Int, unit: Dp, tick: Int) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Canvas(Modifier.size(unit * n)) {
-            val px = size.width / n
+        DotMatrix(n, n, Modifier.size(unit * n)) { lit, dim ->
+            val bear = BearRaster.build(entry.look(age, tick), n)
             val lift = (entry.lift(tick) * n / 25f).roundToInt()
-            drawBear(entry.look(age, tick), n, Offset(0f, -lift * px), px, Led.Lit, Led.Dim, Led.Off)
+            for (y in 0 until n) for (x in 0 until n) {
+                when (bear[x, y]) {
+                    BearGrid.FUR -> lit.add(x, y - lift)
+                    BearGrid.INNER_EAR -> dim.add(x, y - lift)
+                }
+            }
         }
         Text("N = $n", style = MaterialTheme.typography.labelSmall, color = Led.Dim)
     }

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bear prototype</title>
+<style>
+body{margin:0;background:#141412;color:#e8e8e2;font-family:system-ui,sans-serif;display:flex;justify-content:center}
+.wrap{padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:392px;box-sizing:border-box}
+button{font:inherit;font-size:14px;padding:8px 14px;border-radius:8px;border:1px solid #444;background:transparent;color:inherit;cursor:pointer}
+.panel{width:100%;background:#1f1f1c;border-radius:12px;padding:16px;box-sizing:border-box;display:flex;gap:16px;align-items:center;font-size:13px;color:#a9a99f;line-height:1.5}
+.panel b{color:#e8e8e2;font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+<canvas id="lcd" width="720" height="1200" style="width:100%;max-width:360px;display:block;border-radius:20px;touch-action:none;user-select:none"></canvas>
+<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+<button id="feed">Feed</button>
+<button id="worry">Make it worry</button>
+<button id="age">Show adult</button>
+</div>
+<div class="panel">
+<canvas id="glyph" width="300" height="300" style="width:132px;height:132px;flex:none;border-radius:50%;cursor:pointer"></canvas>
+<div><b>Glyph Matrix, 25 × 25</b><br>Mirrors the bear on the front. Tap it to press the Glyph Button.</div>
+</div>
+</div>
+<script>
+let cub=true;
+const LIT='#DCE4C6',DIM='#7D846F',OFF='#1C1F18',BG='#0B0C09';
+function build(cub,N,st,t,o){o=o||{};const g=new Uint8Array(N*N),s=N/25,c=N>>1,big=s>0.8,k=N>=44?2:1;
+const set=(x,y,v)=>{if(x>=0&&y>=0&&x<N&&y<N)g[y*N+x]=v;},get=(x,y)=>(x>=0&&y>=0&&x<N&&y<N)?g[y*N+x]:0;
+const hole=(x,y)=>{if(get(x,y)===1||get(x,y)===2)set(x,y,3);};
+const worry=st==='worried',sleep=st==='sleepy',happy=st==='happy',rel=st==='relieved';
+const sw=(worry&&big?(Math.floor(t/4)%4<2?-1:1):0)*k,look=(o.back?0:(o.look||0))*k;
+const Ax=(k===2?c:c+0.5)+sw;
+const hw=cub?Math.max(4,Math.round(8*s)):Math.max(5,Math.round(9.5*s));
+const h=(cub?Math.max(5,Math.round(10*s)):Math.max(6,Math.round(12.5*s)))+(o.hAdj||0)*k;
+const bottom=Math.round(N*0.8)-(k-1),top=bottom-h+1+(sleep&&big?k:0),cy=(top+bottom)/2,ry=(bottom-top+1)/2+0.3;
+const er=cub?Math.max(1.2,2.4*s):Math.max(1.2,2.6*s),ex=cub?5.8*s:6.8*s,exr=k===2?ex:Math.round(ex),ety=top+Math.round(1*s);
+for(let y=0;y<N;y++)for(let x=0;x<N;x++){const X=x+0.5;if(((X-Ax)/(hw+0.5))**2+((y-cy)/ry)**2<=1||(X-(Ax-exr))**2+(y+0.5-ety-0.5)**2<=er*er||(X-(Ax+exr))**2+(y+0.5-ety-0.5)**2<=er*er)set(x,y,1);}
+if(big&&!o.back){[-1,1].forEach(sd=>{const ecx=Ax+sd*exr,ecy=ety+0.5;for(let y=Math.floor(ecy-er);y<=ecy+er;y++)for(let x=Math.floor(ecx-er);x<=ecx+er;x++){const d=Math.hypot(x+0.5-ecx,y+0.5-ecy);if(d<=er*(k===2?0.42:0.5)&&y<=ety+(k===2?1:0)&&get(x,y)===1)set(x,y,2);}});}
+const fo=Math.max(1,Math.round(hw*0.5)),fw=big?2*k:1;
+for(let r=0;r<k;r++)for(let i=0;i<fw;i++){const cc=Math.floor(Ax);if(o.step!==1)set(cc-fo-1-i,bottom+1+r,1);if(o.step!==2)set(cc+fo+i,bottom+1+r,1);}
+if(o.back)return{g,N,c,bottom:bottom+k-1,hw};
+const blink=(t%40)<2&&!happy&&!sleep&&!rel;
+const Cc=c+sw+look;
+if(big){
+const px=dx=>Cc+dx*k-(k-1),eyT=Math.round(cy-(cub?1.5:2)*k),py=dy=>eyT+dy*k;
+const H=(dx,dy)=>{for(let j=0;j<k;j++)for(let i=0;i<k;i++)hole(px(dx)+i,py(dy)+j);};
+const Lt=(dx,dy)=>{for(let j=0;j<k;j++)for(let i=0;i<k;i++)set(px(dx)+i,py(dy)+j,1);};
+const eye=(x0,m)=>{
+if(sleep||blink||rel){H(x0,1);H(x0+1,2);H(x0+2,1);return;}
+if(happy){H(x0,1);H(x0+1,0);H(x0+2,1);return;}
+const y0=worry?-1:0,eh=worry?4:3;for(let j=0;j<eh;j++)for(let i=0;i<3;i++)H(x0+i,y0+j);
+if(k===2){const X0=px(x0),Y0=py(y0),W=6,Hh=eh*2;[[0,0],[W-1,0],[0,Hh-1],[W-1,Hh-1]].forEach(([i,j])=>set(X0+i,Y0+j,1));
+const sx=m?X0+3:X0+1;set(sx,Y0+1,1);set(sx+1,Y0+1,1);set(sx,Y0+2,1);set(sx+1,Y0+2,1);set(m?X0+1:X0+4,Y0+Hh-2,1);}
+else Lt(m?x0+2:x0,y0);};
+eye(-4,false);eye(2,true);
+if(worry){H(-2,-4);H(-3,-4);H(-4,-3);H(2,-4);H(3,-4);H(4,-3);}
+let my;
+if(cub){H(0,3);if(k===2){hole(px(0)-1,py(3));hole(px(0)+2,py(3));}my=4;
+if(!o.carry){if(happy){H(-1,my);H(0,my);H(1,my);H(0,my+1);}else if(worry){H(0,my);H(-1,my+1);H(1,my+1);}else if(sleep){H(0,my);}else{H(-1,my);H(1,my);}}}
+else{H(-1,3);H(0,3);H(1,3);H(0,4);my=5;
+if(!o.carry){if(happy){[[-2,0],[-1,0],[0,0],[1,0],[2,0],[-1,1],[0,1],[1,1]].forEach(([i,j])=>H(i,my+j));}else if(worry){H(-1,my+1);H(1,my+1);H(-2,my+2);H(2,my+2);}else if(sleep){}else{H(-1,my+1);H(1,my+1);H(-2,my);H(2,my);}}}
+if(o.carry){const by=my+1;for(let j=-2;j<=2;j++)for(let i=-2;i<=2;i++){if(Math.abs(i)+Math.abs(j)>3)continue;H(i,by+j);}for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++)Lt(i,by+j);}
+if(o.puff){const hu=Math.round(hw/k)+1+(o.puff>1?1:0),pu=my-1-(o.puff>1?2:0);[[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(([i,j])=>Lt(hu+i,pu+j));if(o.puff>1)[[2,0],[1,1],[1,-1]].forEach(([i,j])=>Lt(hu+i,pu+j));}
+}else{const a=2,C=Cc,ey=Math.round(cy-(cub?0.5:1));
+if(sleep||rel||blink){hole(C-a,ey);hole(C+a,ey);}else{hole(C-a,ey);hole(C+a,ey);if(worry||cub){hole(C-a,ey-1);hole(C+a,ey-1);}}
+if(!o.carry){if(cub){if(happy){hole(C-1,ey+1);hole(C,ey+1);hole(C+1,ey+1);}else if(!sleep)hole(C,ey+1);}else{hole(C,ey+1);if(happy){hole(C-1,ey+2);hole(C,ey+2);hole(C+1,ey+2);}else if(!sleep){hole(C-1,ey+2);hole(C+1,ey+2);}}}
+else{set(C,ey+2,1);set(C-1,ey+2,1);set(C+1,ey+2,1);}}
+const blkL=(x,y)=>{for(let j=0;j<k;j++)for(let i=0;i<k;i++)set(x+i,y+j,1);};
+if(worry&&big){const dx=c+sw+hw+2*k,dy=top-k;[[0,0],[-1,1],[1,1],[0,1],[0,2]].forEach(([i,j])=>blkL(dx+i*k,dy+j*k));}
+if(sleep&&big){const zs=Math.floor(t/5)%3,zx=c+hw-k,zy=top-4*k-zs*k;[[0,0],[1,0],[2,0],[1,1],[0,2],[1,2],[2,2]].forEach(([i,j])=>blkL(zx+i*k,zy+j*k));}
+return{g,N,c,bottom:bottom+k-1,hw};}
+const C=120,R=200,P=6,DR=2.4,cv=document.getElementById('lcd'),ctx=cv.getContext('2d'),G=new Uint8Array(C*R);
+const bgc=document.createElement('canvas');bgc.width=720;bgc.height=1200;const bx=bgc.getContext('2d');
+bx.fillStyle=BG;bx.fillRect(0,0,720,1200);bx.fillStyle=OFF;
+for(let j=0;j<R;j++)for(let i=0;i<C;i++){bx.beginPath();bx.arc(i*P+3,j*P+3,DR,0,Math.PI*2);bx.fill();}
+const HZ=-4.2,FY=97,ZMIN=0.1,ZMAX=1.25;
+const f=z=>1/(1+z),X=(x,z)=>(30+x*f(z))*2,Y=z=>(HZ+(FY-HZ)*f(z))*2,SC=z=>f(z)/f(ZMIN);
+const V={'#':3,'+':2,'o':1};
+function put(x,y,v){x=Math.round(x);y=Math.round(y);if(x<0||y<0||x>=C||y>=R||!v)return;G[y*C+x]=v;}
+function stamp(a,x0,y0,k){k=k||1;x0=Math.round(x0);y0=Math.round(y0);a.forEach((r,j)=>{for(let i=0;i<r.length;i++){const v=V[r[i]];if(!v)continue;for(let b=0;b<k;b++)for(let q=0;q<k;q++)put(x0+i*k+q,y0+j*k+b,v);}});}
+function shadow(cx,cy,rx,ry){for(let y=Math.floor(cy-ry);y<=cy+ry;y++)for(let x=Math.floor(cx-rx);x<=cx+rx;x++)if(((x+0.5-cx)/rx)**2+((y+0.5-cy)/ry)**2<=1&&x>=0&&y>=0&&x<C&&y<R&&!G[y*C+x])G[y*C+x]=4;}
+const HEART=[".#.#.","#####","#####",".###.","..#.."];
+const IC=[[".#.#.","#####","#####",".###.","..#.."],["..##.",".##..","#####","..##.",".##.."],["..#..","..#..","#####","..#..","..#.."]];
+let wx=0,wz=0.25,tx=0,tz=0.25,dir=1,pause=20,frame=0,tick=0,happy=0,hopI=-1,hearts=[],away=false,moving=false;
+let mode='wander',timer=0,ball={state:'hand',sx:60,sy:186},handT=0,food=null,worryX=0,hap=70,en=80,hp=70;
+const HOP=[0,1,2,3,2,1,0],HX=60,HY=186,cl=v=>Math.max(0,Math.min(100,v));
+function petState(){const o={};let st='calm';
+if(mode==='sigh'){if(timer<12){o.hAdj=1;}else if(timer<26){st='relieved';o.hAdj=-1;o.puff=timer<19?1:2;}else st='relieved';}
+else if(mode==='worry')st='worried';
+else if(mode==='sleep'||mode==='tired')st='sleepy';
+else if(happy>0||mode==='ready')st='happy';
+else if(hap<35)st='worried';
+if(mode==='eat'&&timer>0&&(tick>>2)%2)st='happy';
+if(moving)o.step=frame?1:2;
+if(away)o.back=1;else if(moving&&mode!=='worry')o.look=dir;
+if(ball.state==='carried')o.carry=1;
+return[st,o];}
+function petN(){return Math.max(13,Math.round(52*SC(wz)));}
+function drawPet(){const N=petN(),[st,o]=petState(),b=build(cub,N,st,tick,o),gx=Math.round(X(wx,wz)),gy=Math.round(Y(wz))-(hopI>=0?Math.round(HOP[hopI]*N/25):0);
+shadow(gx,Math.round(Y(wz))+3,b.hw*0.9,Math.max(1,2.4*N/50));
+const x0=gx-b.c,y0=gy-b.bottom-1;
+for(let j=0;j<N;j++)for(let i=0;i<N;i++){const v=b.g[j*N+i];if(!v)continue;put(x0+i,y0+j,v===1?3:v===2?2:1);}}
+function ballPos(){if(ball.state==='hand'||ball.state==='drag')return{x:ball.sx,y:ball.sy,r:6,z:-1,sh:0};
+const rr=z=>(2.6*SC(z)+0.4)*2;
+if(ball.state==='rest')return{x:X(ball.tx,ball.tz),y:Y(ball.tz)-rr(ball.tz),r:rr(ball.tz),z:ball.tz,sh:1,h:0};
+const T=ball.dur,t=ball.t,p=Math.min(1,t/T);let h=ball.H*4*p*(1-p);
+if(t>T){const u=t-T;if(u<T*0.35){const q=u/(T*0.35);h=ball.H*0.22*4*q*(1-q);}else if(u<T*0.55){const q=(u-T*0.35)/(T*0.2);h=ball.H*0.06*4*q*(1-q);}}
+const r=6+(rr(ball.tz)-6)*p,gx=ball.sx+(X(ball.tx,ball.tz)-ball.sx)*p,gy=ball.sy+(Y(ball.tz)-r-ball.sy)*p;
+return{x:gx,y:gy-h*SC(ball.tz)*2,r:r,z:-0.2+(ball.tz+0.2)*p,sh:p>0.3?1:0,h:h*SC(ball.tz)*2};}
+function drawBall(){const b=ballPos();if(b.sh)shadow(b.x,Math.round(b.y+b.r+(b.h||0))+2,b.r*0.9,Math.max(1,b.r*0.3));
+const cx=Math.round(b.x)+0.5,cy=Math.round(b.y)+0.5;
+for(let y=Math.floor(cy-b.r-1);y<=cy+b.r+1;y++)for(let x=Math.floor(cx-b.r-1);x<=cx+b.r+1;x++)if(((x+0.5-cx)/b.r)**2+((y+0.5-cy)/b.r)**2<=1)put(x,y,3);
+if(b.r>=4){const sx=Math.round(cx-b.r*0.45),sy=Math.round(cy-b.r*0.45);put(sx,sy,2);put(sx+1,sy,2);put(sx,sy+1,2);}}
+function drawFood(){const s=SC(food.z),gx=Math.round(X(food.x,food.z)),gy=Y(food.z),r=(2.4*s+0.6)*2*food.bite;
+shadow(gx+0.5,Math.round(gy)+2,(2.4*s+0.6)*1.8,Math.max(1,2*s));if(r<1)return;
+const cx=gx+0.5,cy=Math.round(gy-food.h*2-r)+0.5,ins=(x,y)=>((x+0.5-cx)/r)**2+((y+0.5-cy)/r)**2<=1;
+for(let y=Math.floor(cy-r-1);y<=cy+r+1;y++)for(let x=Math.floor(cx-r-1);x<=cx+r+1;x++){if(!ins(x,y))continue;const e=!ins(x-1,y)||!ins(x+1,y)||!ins(x,y-1)||!ins(x,y+1);put(x,y,e?3:2);}
+if(food.bite>0.6&&s>0.65)stamp(["#.","##"],gx,Math.round(cy-r)-4,2);}
+function hud(){[hap,en,hp].forEach((v,n)=>{const y=8+n*14;stamp(IC[n],8,y,2);const kk=Math.ceil(v/20-0.01);for(let i=0;i<5;i++){const x=22+i*5;if(i<kk)stamp(["###","###","###","###","###","###","###","###","###","###"],x,y);else stamp(["+++","+++"],x,y+8);}});}
+function render(){G.fill(0);
+const items=[{z:wz,d:drawPet}];if(ball.state!=='carried'&&ball.state!=='gone')items.push({z:ballPos().z,d:drawBall});if(food)items.push({z:food.z,d:drawFood});
+items.sort((a,b)=>b.z-a.z).forEach(it=>it.d());
+hearts.forEach(h=>stamp(HEART,h.x-5,h.y-8,2));hud();
+ctx.drawImage(bgc,0,0);
+for(let j=0;j<R;j++)for(let i=0;i<C;i++){const v=G[j*C+i];let col=null;if(v===3)col=LIT;else if(v===2)col=DIM;else if(v===4&&(i+j)%2===0)col=DIM;
+if(col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(i*P+3,j*P+3,DR,0,Math.PI*2);ctx.fill();}}
+renderGlyph();}
+const gc=document.getElementById('glyph'),gx2=gc.getContext('2d');
+function renderGlyph(){const[st,o]=petState();delete o.back;const b=build(cub,25,st,tick,o),off=hopI>=0?HOP[hopI]>=2?1:0:0;
+gx2.fillStyle=BG;gx2.fillRect(0,0,300,300);const p=12;
+for(let j=0;j<25;j++)for(let i=0;i<25;i++){if((i-12)**2+(j-12)**2>12.6**2)continue;const sj=j+off,v=sj<25?b.g[sj*25+i]:0;
+gx2.fillStyle=v===1?LIT:v===2?DIM:OFF;gx2.beginPath();gx2.arc(i*p+6,j*p+6,4.6,0,Math.PI*2);gx2.fill();}}
+const halfW=N=>(cub?8:9.5)*N/25+3;
+const lim=z=>(58-halfW(petN()))/(2*f(z));
+function pick(){tz=ZMIN+Math.random()*(ZMAX-ZMIN);tx=(Math.random()*2-1)*(56-halfW(Math.max(13,52*SC(tz))))/(2*f(tz));}
+function moveTo(x,z,vx,vz){const dx=x-wx,dz=z-wz;
+if(Math.abs(dx)<vx&&Math.abs(dz)<vz){wx=x;wz=z;away=false;return true;}
+moving=true;wx+=Math.max(-vx,Math.min(vx,dx));wz+=Math.max(-vz,Math.min(vz,dz));
+const L=lim(wz);wx=Math.max(-L,Math.min(L,wx));
+if(Math.abs(dx)>vx)dir=dx>0?1:-1;
+away=dz>vz*0.5&&Math.abs(dz)*40>Math.abs(dx);
+if(tick%3===0)frame^=1;return false;}
+function toHand(){ball={state:'hand',sx:HX,sy:HY};}
+function petTop(){return Math.round(Y(wz))-Math.round(petN()*0.62);}
+function heartsAt(n){for(let i=0;i<n;i++)hearts.push({x:Math.round(X(wx,wz)+(i-(n-1)/2)*14),y:petTop()-4-i*6,life:24+i*3});}
+function startWorry(){if(['wander','bored'].includes(mode)){mode='worry';timer=0;worryX=wx;pause=0;}}
+function pat(){if(mode==='worry'){mode='sigh';timer=0;return;}if(mode==='sigh')return;hap=cl(hap+6);heartsAt(1);if(mode==='sleep')return;if(hopI<0)hopI=0;happy=20;away=false;if(mode==='wander')pause=Math.max(pause,18);}
+function step(){tick++;moving=false;
+if(hopI>=0){hopI++;if(hopI>=HOP.length)hopI=-1;}
+if(happy>0)happy--;
+hearts.forEach(h=>{h.y-=0.8;h.life--;});hearts=hearts.filter(h=>h.life>0);
+if(ball.state==='fly'){ball.t++;if(ball.t>=ball.dur*1.55){ball.state='rest';if(mode==='watch'){if(en<25){mode='tired';timer=45;}else mode='chase';}}}
+if(food&&food.state==='drop'){food.t++;const t=food.t;if(t<12)food.h=50*(1-(t/12)**2);else if(t<18){const u=(t-12)/6;food.h=3*4*u*(1-u);}else{food.h=0;food.state='rest';}}
+if(handT>0&&--handT===0)toHand();
+hap=cl(hap-(mode==='worry'?0.06:0.03));hp=cl(hp-0.02+(hap>50&&en>40?0.008:0));
+const busy=mode==='chase'||mode==='return';en=cl(en+(mode==='sleep'?0.35:busy?-0.16:moving?-0.012:0.004));
+const vit=(0.55+0.45*en/100)*(0.7+0.3*hp/100)*(cub?0.8:0.95),spd=1.6*vit;
+if((mode==='wander'||mode==='bored')&&food&&food.state==='rest'){mode='eat';timer=-1;}
+if(mode==='wander'&&en<12)mode='sleep';
+if(mode==='wander'&&(hap<38?Math.random()<0.01:Math.random()<0.0012))startWorry();
+if(mode==='wander'){if(pause>0){pause--;away=false;if(pause===0)pick();if(hap>80&&pause>0&&hopI<0&&Math.random()<0.012)hopI=0;}
+else if(moveTo(tx,tz,0.5*(1+wz*0.8)*vit*1.3,0.01*(1+wz)*vit*1.3))pause=24+Math.floor(Math.random()*40)+(en<35||hp<30?40:0);}
+else if(mode==='worry'){timer++;const L=lim(wz),nx=Math.max(-L,Math.min(L,worryX+Math.sin(timer*0.09)*4));dir=nx>wx?1:-1;wx=nx;moving=true;away=false;if(tick%3===0)frame^=1;if(timer>500){mode='wander';pause=20;hap=cl(hap-5);}}
+else if(mode==='sigh'){timer++;away=false;if(timer>=40){mode='wander';pause=30;happy=34;hopI=0;hap=cl(hap+25);heartsAt(2);}}
+else if(mode==='ready'){away=false;dir=ball.sx>X(wx,wz)?1:-1;if(tick%10===0&&hopI<0)hopI=0;}
+else if(mode==='watch'){away=false;dir=ballPos().x>X(wx,wz)?1:-1;}
+else if(mode==='chase'){if(moveTo(ball.tx,ball.tz+0.05,1.2*spd*(1+wz*0.8),0.022*spd*(1+wz))){mode='pick';timer=8;hopI=0;}}
+else if(mode==='pick'){if(--timer<=0){if(Math.random()<(cub?0.45:0.7)*(0.6+0.4*hap/100)){ball.state='carried';mode='return';}else{mode='bored';timer=50;}}}
+else if(mode==='return'){if(moveTo(0,ZMIN+0.1,1.1*spd*(1+wz*0.8),0.02*spd*(1+wz))){mode='wander';pause=30;away=false;ball={state:'rest',tx:wx+dir*7,tz:wz-0.05};handT=18;happy=24;hopI=0;hap=cl(hap+15);heartsAt(2);}}
+else if(mode==='bored'){away=false;if(--timer<=0){mode='wander';pause=1;ball.state='gone';handT=8;}}
+else if(mode==='tired'){away=false;if(--timer<=0){mode='wander';pause=20;ball.state='gone';handT=8;}}
+else if(mode==='eat'){if(timer<0){if(moveTo(food.x+(food.x>wx?-2.5:2.5),food.z+0.04,0.8*spd*(1+wz*0.8),0.015*spd*(1+wz))){timer=26;dir=food.x>wx?1:-1;}}
+else{food.bite=Math.max(0,(timer-1)/26);if(--timer<=0){food=null;hp=cl(hp+25);en=cl(en+8);hap=cl(hap+6);happy=16;hopI=0;mode='wander';pause=20;}}}
+else if(mode==='sleep'){away=false;if(en>=95){mode='wander';pause=12;hopI=0;}}
+render();}
+function uxy(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width*C,(e.clientY-r.top)/r.height*R];}
+function onPet(ux,uy){const N=petN(),gx=X(wx,wz),gy=Y(wz);return Math.abs(ux-gx)<N*0.45&&uy<gy+4&&uy>gy-N*0.8;}
+let drag=null;
+cv.addEventListener('pointerdown',e=>{const[ux,uy]=uxy(e);cv.setPointerCapture(e.pointerId);drag={x0:ux,y0:uy,pts:[[ux,uy,performance.now()]],grab:false};
+if(['sleep','worry','sigh'].includes(mode))return;
+if(ball.state==='hand'&&Math.hypot(ux-HX,uy-HY)<20&&(mode==='wander'||mode==='bored')){drag.grab=true;ball.state='drag';mode='ready';pause=0;}});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const[ux,uy]=uxy(e);drag.pts.push([ux,uy,performance.now()]);if(drag.pts.length>8)drag.pts.shift();
+if(drag.grab){ball.sx=Math.max(8,Math.min(112,ux));ball.sy=Math.max(100,Math.min(190,uy));}});
+cv.addEventListener('pointerup',e=>{if(!drag)return;const[ux,uy]=uxy(e),d0=drag;drag=null;
+if(!d0.grab){if(Math.hypot(ux-d0.x0,uy-d0.y0)<6&&onPet(ux,uy))pat();return;}
+const now=performance.now(),old=d0.pts.find(p=>now-p[2]<120)||d0.pts[0],dt=Math.max(16,now-old[2]),vx=(ux-old[0])/dt/2,vy=(uy-old[1])/dt/2;
+if(vy>-0.03){toHand();mode='wander';pause=10;return;}
+const power=Math.min(1,(-vy-0.03)/0.17),z=0.3+power*(ZMAX-0.3),ratio=Math.max(-1.2,Math.min(1.2,vx/(-vy))),L=25/f(z),x=Math.max(-L,Math.min(L,(ball.sx/2-30)/f(z)*0.4+ratio*z*30));
+ball={state:'fly',sx:ball.sx,sy:ball.sy,tx:x,tz:z,t:0,dur:Math.round(14+z*10),H:16+z*14};mode='watch';if(hopI<0)hopI=0;});
+cv.addEventListener('pointercancel',()=>{if(drag&&drag.grab){toHand();mode='wander';}drag=null;});
+gc.addEventListener('click',pat);
+document.getElementById('feed').addEventListener('click',()=>{if(food)return;const z=0.35+Math.random()*0.6,L=22/f(z);food={x:(Math.random()*2-1)*L,z:z,h:50,t:0,state:'drop',bite:1};});
+document.getElementById('worry').addEventListener('click',()=>{if(mode==='sleep'){mode='wander';en=cl(en+20);}if(mode==='ready'||mode==='watch'){toHand();mode='wander';}startWorry();});
+const ab=document.getElementById('age');ab.addEventListener('click',()=>{cub=!cub;ab.textContent=cub?'Show adult':'Show cub';});
+render();setInterval(step,60);
+</script>
+</body>
+</html>

@@ -358,8 +358,10 @@ class BearSim(private val random: Random = Random.Default) {
                         random.nextDouble() < Tuning.RANDOM_HOP_CHANCE
                     ) hopIndex = 0
                 } else {
-                    val boost = vitality * Tuning.WANDER_SPEED_BOOST
-                    if (moveTo(targetX, targetZ, Tuning.WANDER_SPEED_X * depthX * boost, Tuning.WANDER_SPEED_Z * depthZ * boost)) {
+                    // Same operation order as the prototype, so runs match it exactly.
+                    val vx = Tuning.WANDER_SPEED_X * depthX * vitality * Tuning.WANDER_SPEED_BOOST
+                    val vz = Tuning.WANDER_SPEED_Z * depthZ * vitality * Tuning.WANDER_SPEED_BOOST
+                    if (moveTo(targetX, targetZ, vx, vz)) {
                         val low = energy < Tuning.SLOW_BELOW_ENERGY || health < Tuning.SLOW_BELOW_HEALTH
                         pause = Tuning.PAUSE_MIN + floor(random.nextDouble() * Tuning.PAUSE_RANDOM).toInt() +
                             if (low) Tuning.PAUSE_WHEN_LOW else 0

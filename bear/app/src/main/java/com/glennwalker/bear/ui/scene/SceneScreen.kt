@@ -1,7 +1,5 @@
 package com.glennwalker.bear.ui.scene
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +27,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.glennwalker.bear.core.Age
+import com.glennwalker.bear.core.Floor
+import com.glennwalker.bear.core.SceneRaster
 import com.glennwalker.bear.ui.BearViewModel
+import com.glennwalker.bear.ui.matrix.DotLayout
+import com.glennwalker.bear.ui.matrix.DotMatrix
 import com.glennwalker.bear.ui.theme.Led
 import kotlinx.coroutines.CancellationException
 import kotlin.math.roundToInt
@@ -66,22 +68,23 @@ fun SceneScreen(vm: BearViewModel, onOpenCharacterSheet: () -> Unit) {
 
 @Composable
 private fun SceneCanvas(vm: BearViewModel) {
-    Canvas(
-        Modifier
-            .aspectRatio(120f / 200f)
+    DotMatrix(
+        cols = Floor.WIDTH,
+        rows = Floor.HEIGHT,
+        modifier = Modifier
+            .aspectRatio(Floor.WIDTH.toFloat() / Floor.HEIGHT)
             .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, Led.Off, RoundedCornerShape(20.dp))
             .pointerInput(vm) {
                 awaitEachGesture {
-                    val frame = SceneFrame(size.width.toFloat(), size.height.toFloat())
+                    val layout = DotLayout(size.width.toFloat(), size.height.toFloat(), Floor.WIDTH, Floor.HEIGHT)
                     val down = awaitFirstDown()
-                    vm.act { pointerDown(frame.sceneX(down.position.x), frame.sceneY(down.position.y), down.uptimeMillis) }
+                    vm.act { pointerDown(layout.gridX(down.position.x), layout.gridY(down.position.y), down.uptimeMillis) }
                     try {
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                            val x = frame.sceneX(change.position.x)
-                            val y = frame.sceneY(change.position.y)
+                            val x = layout.gridX(change.position.x)
+                            val y = layout.gridY(change.position.y)
                             if (!change.pressed) {
                                 vm.act { pointerUp(x, y, change.uptimeMillis) }
                                 break
@@ -95,9 +98,13 @@ private fun SceneCanvas(vm: BearViewModel) {
                     }
                 }
             },
-    ) {
+    ) { lit, dim ->
         vm.frame // Redraw whenever the simulation moves.
-        drawScene(vm.sim, SceneFrame(size.width, size.height))
+        val dots = vm.raster.render(vm.sim)
+        for (y in 0 until Floor.HEIGHT) for (x in 0 until Floor.WIDTH) {
+            val v = dots[y * Floor.WIDTH + x].toInt()
+            if (v == SceneRaster.LIT) lit.add(x, y) else if (SceneRaster.isDim(v, x, y)) dim.add(x, y)
+        }
     }
 }
 
