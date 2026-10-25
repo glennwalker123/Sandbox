@@ -1,0 +1,51 @@
+name: Bear APK
+
+on:
+  push:
+    paths:
+      - "bear/**"
+      - ".github/workflows/bear-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bear-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bear
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test and build
+        run: ./gradlew :core:test :app:assembleDebug --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bear-debug-apk
+          path: bear/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish preview release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk bear.apk
+          gh release delete bear-preview --yes --cleanup-tag || true
+          gh release create bear-preview bear.apk \
+            --prerelease \
+            --target "${{ github.sha }}" \
+            --title "Bear preview" \
+            --notes "Debug build of ${{ github.ref_name }} at ${{ github.sha }}. Open on your phone and tap bear.apk to install."
