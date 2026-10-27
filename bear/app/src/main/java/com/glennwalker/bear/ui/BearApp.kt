@@ -20,8 +20,8 @@ private object Routes {
 }
 
 @Composable
-fun BearApp(keys: KeyStore) {
-    val vm: BearViewModel = viewModel { BearViewModel(keys) }
+fun BearApp(keys: KeyStore, health: HealthSource? = null) {
+    val vm: BearViewModel = viewModel { BearViewModel(keys, health) }
     BearTheme {
         Box(Modifier.fillMaxSize().background(Led.Background)) {
             val nav = rememberNavController()

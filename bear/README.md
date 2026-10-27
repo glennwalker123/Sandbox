@@ -52,7 +52,13 @@ Matrix mirror stays monochrome, like the hardware.
   bear's side (`core/BearTalk.kt` holds its personality, what it knows about its own state,
   and the reply format). Kind replies make it hop; reassurance settles a worried bear.
   The app needs a Claude API key (Debug → Claude key), stored only on the phone. This is
-  the one network call the app makes. The web preview talks through your claude.ai account.
+  the one network call the app makes. Health data is never part of it. The web preview talks through your claude.ai account.
+- **Health Connect**: your own sleep and steps feed the bear (`core/HealthLink.kt`). A
+  night's sleep gives energy once per night (up to +45 at 8 hours); steps add health through
+  the day (up to +40 at 8,000). Rewards only: a short night or a quiet day gives less, never a
+  penalty. Read on the phone through Android's built-in Health Connect (READ_SLEEP and
+  READ_STEPS); nothing is sent anywhere, including to Claude. Under the screen: last night's
+  sleep, today's steps, and what they added. The web preview has sliders to simulate it.
 - **Debug row**: mode, mood and stats, plus Make it worry, cub/adult, the character sheet
   and the Claude key.
 - **Character sheet**: cub and adult in every mood and pose at N = 52, 25 and 13, animated.

@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,6 +46,7 @@ import com.glennwalker.bear.core.CareMenu
 import com.glennwalker.bear.core.Floor
 import com.glennwalker.bear.core.SceneRaster
 import com.glennwalker.bear.ui.BearViewModel
+import com.glennwalker.bear.ui.Health
 import com.glennwalker.bear.ui.matrix.DotLayout
 import com.glennwalker.bear.ui.matrix.DotMatrix
 import com.glennwalker.bear.ui.theme.Led
@@ -102,6 +104,7 @@ fun SceneScreen(vm: BearViewModel, onOpenCharacterSheet: () -> Unit) {
                 )
             }
         }
+        HealthLine(vm)
         DebugLine(vm)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("DEBUG", style = MaterialTheme.typography.labelSmall, color = Led.Dim)
@@ -192,6 +195,27 @@ private fun SceneDots(vm: BearViewModel) {
             val i = y * Floor.WIDTH + x
             val v = dots[i].toInt()
             if (v == SceneRaster.LIT) out.lit(x, y, vm.raster.tint(i)) else if (SceneRaster.isDim(v, x, y)) out.dim(x, y, vm.raster.tint(i))
+        }
+    }
+}
+
+/** Your sleep and steps from Health Connect, and what they gave the bear. */
+@Composable
+private fun HealthLine(vm: BearViewModel) {
+    vm.frame
+    val health = vm.health
+    val small = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Led.Dim, textAlign = TextAlign.Center)
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(vertical = 4.dp)) {
+        when (health.status) {
+            Health.Status.UNAVAILABLE -> Text("Health Connect isn't available on this phone", style = small)
+            Health.Status.NOT_CONNECTED -> {
+                Text("Your sleep and steps can give Bear energy and health", style = small)
+                SmallButton("Connect Health Connect") { health.connect() }
+            }
+            Health.Status.CONNECTED -> {
+                Text(health.reading.ifEmpty { "Reading sleep and steps…" }, style = small)
+                if (health.boost.isNotEmpty()) Text(health.boost, style = small.copy(color = Led.Lit))
+            }
         }
     }
 }

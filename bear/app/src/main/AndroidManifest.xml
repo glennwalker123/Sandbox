@@ -4,6 +4,10 @@
     <!-- Only used to talk to Claude when you chat with the bear. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Your sleep and steps from Health Connect give the bear energy and health. Read on the phone only. -->
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -19,6 +23,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Health Connect opens this to show why Bear asks for sleep and steps. -->
+        <activity-alias
+            android:name=".HealthPermissionsRationale"
+            android:exported="true"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
     </application>
 
 </manifest>

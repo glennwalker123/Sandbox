@@ -100,6 +100,24 @@ button:focus-visible { outline: 2px solid var(--dim); outline-offset: 2px; }
 .glyph b { color: var(--lit); font-weight: 500; }
 #glyph { width: 112px; height: 112px; flex: none; border-radius: 50%; cursor: pointer; }
 
+.health { display: flex; flex-direction: column; gap: 8px; background: var(--off); border-radius: 12px; padding: 14px; font-size: 13px; color: var(--dim); }
+.health b { color: var(--lit); font-weight: 500; }
+.health-note { margin: 0; }
+.health label { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; }
+.health output { font-family: var(--font-data); color: var(--lit); font-variant-numeric: tabular-nums; }
+.health input[type=range] {
+  grid-column: 1 / -1; width: 100%; height: 4px; margin: 8px 0; -webkit-appearance: none; appearance: none;
+  background: var(--line); border-radius: 2px;
+}
+.health input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--lit); border: 0; }
+.health input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--lit); border: 0; }
+.health input[type=range]:focus-visible { outline: 2px solid var(--dim); outline-offset: 4px; }
+.health-actions { display: flex; gap: 8px; }
+.health-actions button { font-size: 13px; padding: 6px 12px; }
+.health-line { margin: 0; font-family: var(--font-data); font-size: 12px; }
+.health-line.lit { color: var(--lit); }
+.health-line:empty { display: none; }
+
 /* Character sheet */
 .sheet { display: flex; flex-direction: column; gap: 6px; }
 .sheet h2 { font-size: 15px; font-weight: 500; margin: 14px 0 2px; }
@@ -199,6 +217,20 @@ footer { font-family: var(--font-data); font-size: 11px; color: var(--dim); text
       <span>Debug</span>
       <button id="worry">Make it worry</button>
       <button id="age">Show adult</button>
+    </div>
+    <div class="health" aria-labelledby="health-title">
+      <b id="health-title">Health Connect (simulated)</b>
+      <p class="health-note">On the phone this comes from Health Connect. Here, set your own numbers.</p>
+      <label>Sleep last night <output id="sleep-out">7.5 h</output>
+        <input type="range" id="sleep" min="0" max="10" step="0.25" value="7.5"></label>
+      <label>Steps today <output id="steps-out">4,000</output>
+        <input type="range" id="steps" min="0" max="12000" step="250" value="4000"></label>
+      <div class="health-actions">
+        <button id="health-sync">Sync</button>
+        <button id="health-day">Next day</button>
+      </div>
+      <p class="health-line" id="health-reading">Not synced yet</p>
+      <p class="health-line lit" id="health-boost"></p>
     </div>
     <div class="glyph">
       <canvas id="glyph" aria-label="Glyph Matrix mirror: tap to press the Glyph Button"></canvas>

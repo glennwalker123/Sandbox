@@ -86,6 +86,16 @@ object Tuning {
     const val BORED_TICKS = 50
     const val TIRED_TICKS = 45
 
+    // Your own sleep and steps, from Health Connect. Rewards only: nothing is taken away.
+    /** Hours of sleep that give the full energy boost. */
+    const val SLEEP_GOAL_HOURS = 8.0
+    /** Energy added once per night, scaled by how close you got to [SLEEP_GOAL_HOURS]. */
+    const val SLEEP_ENERGY_MAX = 45.0
+    /** Steps in a day that give the full health boost. */
+    const val STEP_GOAL = 8000
+    /** Health added across a day, in proportion to steps, up to [STEP_GOAL]. */
+    const val STEPS_HEALTH_MAX = 40.0
+
     // Food. What each food adds once eaten. The berry is the prototype's food.
     const val EAT_TICKS = 26
     val FOOD = mapOf(

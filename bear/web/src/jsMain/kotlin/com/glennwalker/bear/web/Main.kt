@@ -9,6 +9,8 @@ import com.glennwalker.bear.core.BearTalk
 import com.glennwalker.bear.core.CharacterSheet
 import com.glennwalker.bear.core.CareMenu
 import com.glennwalker.bear.core.Floor
+import com.glennwalker.bear.core.HealthLink
+import com.glennwalker.bear.core.HealthReading
 import com.glennwalker.bear.core.SceneRaster
 import com.glennwalker.bear.core.Sprites
 import com.glennwalker.bear.core.Tint
@@ -450,6 +452,32 @@ fun main() {
     care.addEventListener("click", { ev -> if (ev.asDynamic().detail == 0) setOpen(!open) })
     byId<HTMLElement>("scrim").onclick = { setOpen(false) }
     document.addEventListener("keydown", { ev -> if (ev.asDynamic().key == "Escape" && open) setOpen(false) })
+
+    // ---- Health Connect, simulated: the same rules the phone uses, fed by sliders ----
+    val link = HealthLink()
+    var healthDay = 0L
+    val sleepInput = byId<HTMLInputElement>("sleep")
+    val stepsInput = byId<HTMLInputElement>("steps")
+    fun showInputs() {
+        byId<HTMLElement>("sleep-out").textContent = "${sleepInput.value} h"
+        byId<HTMLElement>("steps-out").textContent = stepsInput.value.toInt().toString().reversed().chunked(3).joinToString(",").reversed()
+    }
+    sleepInput.oninput = { showInputs() }
+    stepsInput.oninput = { showInputs() }
+    showInputs()
+    fun syncHealth() {
+        val reading = HealthReading(
+            day = healthDay,
+            sleepMinutes = (sleepInput.value.toDouble() * 60).roundToInt(),
+            steps = stepsInput.value.toInt(),
+        )
+        val boost = link.apply(sim, reading)
+        byId<HTMLElement>("health-reading").textContent = HealthLink.describe(reading)
+        byId<HTMLElement>("health-boost").textContent = HealthLink.describe(boost).ifEmpty { "Nothing new to add" }
+        drawScene()
+    }
+    byId<HTMLButtonElement>("health-sync").onclick = { syncHealth() }
+    byId<HTMLButtonElement>("health-day").onclick = { healthDay++; syncHealth() }
 
     // ---- Touch on the scene, in scene dots ----
     fun scenePoint(e: PointerEvent): Pair<Double, Double> {

@@ -12,10 +12,11 @@ import com.glennwalker.bear.core.SceneRaster
 import com.glennwalker.bear.core.Tuning
 
 /** Holds the one running simulation. [frame] changes whenever the scene needs redrawing. */
-class BearViewModel(val keys: KeyStore) : ViewModel() {
+class BearViewModel(val keys: KeyStore, healthSource: HealthSource? = null) : ViewModel() {
     val sim = BearSim()
     val raster = SceneRaster()
     val chat = Chat(sim, keys, viewModelScope) { frame++ }
+    val health = Health(sim, healthSource, viewModelScope) { frame++ }
 
     var frame by mutableIntStateOf(0)
         private set
