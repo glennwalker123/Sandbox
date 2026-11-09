@@ -133,3 +133,22 @@ describe("ArtDirector orientation", () => {
     expect(shown.every((p) => p.orientation === "portrait")).toBe(true);
   });
 });
+
+describe("ArtDirector spend limits", () => {
+  it("stops calling the image API once the daily limit is hit, and keeps showing saved art", async () => {
+    const gen = okGen();
+    const { director, shown } = await setup(
+      { ART_SOURCE: "ai", ART_SCHEDULE: "every:15", ART_MAX_PER_DAY: "1", ART_ROTATE_MINUTES: "10" },
+      gen,
+      new Date(2026, 10, 9, 9).getTime(),
+    );
+    await director.start();
+    director.stop();
+    expect(gen.calls).toBe(1);
+    expect(await director.generateNow()).toBeNull();
+    expect(gen.calls).toBe(1);
+    expect(director.lastError).toMatch(/Daily limit/);
+    expect(director.blockedReason()).toMatch(/Daily limit/);
+    expect(shown.at(-1)?.source).toBe("ai");
+  });
+});

@@ -4,7 +4,7 @@ import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 import QRCode from "qrcode";
 import type { DisplayState } from "../../shared/types.ts";
-import { DATA_DIR, WEB_DIST, loadConfig, loadEnvFile } from "./config.ts";
+import { DATA_DIR, WEB_DIST, describeSchedule, loadConfig, loadEnvFile } from "./config.ts";
 import { cached } from "./cache.ts";
 import { fetchWeather } from "./weather.ts";
 import { fetchCalendar } from "./calendar.ts";
@@ -13,6 +13,7 @@ import { EventHub } from "./events.ts";
 import { ArtStore } from "./art/store.ts";
 import { ArtDirector, contextFactory } from "./art/director.ts";
 import { GooglePhotos } from "./art/googlePhotos.ts";
+import { UsageLog } from "./art/usage.ts";
 
 loadEnvFile();
 const cfg = loadConfig();
@@ -41,6 +42,7 @@ const director = new ArtDirector({
   stores,
   context: contextFactory(cfg, () => weather.peek() ?? null, () => calendar.peek()?.events ?? []),
   onChange: (piece) => hub.broadcast({ type: "art", data: piece }),
+  usage: new UsageLog(path.join(DATA_DIR, "usage.json")),
 });
 const photos = new GooglePhotos(cfg, stores.photos, path.join(DATA_DIR, "google-tokens.json"), (n) => {
   app.log.info(`[photos] imported ${n} photos`);
@@ -102,6 +104,8 @@ app.post("/api/art/next", async () => ({ art: await director.next() }));
 
 app.post("/api/art/generate", async (_req, reply) => {
   if (!director.generator) return reply.code(400).send({ error: "No image API key configured (GEMINI_API_KEY or OPENAI_API_KEY)" });
+  const blocked = director.blockedReason();
+  if (blocked) return reply.code(429).send({ error: blocked });
   const art = await director.generateNow();
   if (!art) return reply.code(502).send({ error: director.lastError ?? "Generation failed" });
   return { art };
@@ -124,7 +128,9 @@ app.get("/api/status", async () => ({
     orientation: `${director.orientation}${cfg.art.orientation === "auto" ? " (follows screen)" : " (fixed)"}`,
     generator: director.generator?.name ?? null,
     promptWriter: cfg.keys.anthropic ? cfg.models.prompt : "built-in template",
-    intervalMinutes: cfg.art.intervalMinutes,
+    schedule: describeSchedule(cfg.art.schedule),
+    limits: { maxPerDay: cfg.art.maxPerDay, monthlyBudget: cfg.art.monthlyBudget, costPerImage: cfg.art.costPerImage },
+    usage: director.usage.summary(Date.now()),
     rotateMinutes: cfg.art.rotateMinutes,
     quietHours: cfg.art.quietHours,
     counts: { ai: stores.ai.list().length, photos: stores.photos.list().length },

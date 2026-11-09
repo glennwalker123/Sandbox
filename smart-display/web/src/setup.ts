@@ -12,8 +12,10 @@ interface Status {
     orientation: string;
     generator: string | null;
     promptWriter: string;
-    intervalMinutes: number;
+    schedule: string;
     rotateMinutes: number;
+    limits: { maxPerDay: number; monthlyBudget: number | null; costPerImage: number };
+    usage: { today: { count: number; cost: number }; month: { count: number; cost: number } };
     quietHours: [number, number] | null;
     counts: { ai: number; photos: number };
     current: ArtPiece | null;
@@ -25,6 +27,15 @@ interface Status {
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const dl = (rows: [string, string][]) => rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("");
+const usd = (n: number) => `$${n.toFixed(2)}`;
+
+function spendText(usage: Status["art"]["usage"], limits: Status["art"]["limits"]): string {
+  const plural = (n: number) => `${n} piece${n === 1 ? "" : "s"}`;
+  const caps = [`~${usd(limits.costPerImage)} each`, `max ${limits.maxPerDay}/day`];
+  if (limits.monthlyBudget !== null) caps.push(`budget ${usd(limits.monthlyBudget)}/month`);
+  return `today ${plural(usage.today.count)} · this month ${plural(usage.month.count)} ≈ ${usd(usage.month.cost)} <span class="muted">(${caps.join(", ")})</span>`;
+}
+
 const ago = (t?: number) => (t ? `${Math.max(0, Math.round((Date.now() - t) / 60_000))} min ago` : "never");
 
 async function load() {
@@ -40,7 +51,8 @@ async function load() {
     ["Orientation", esc(s.art.orientation)],
     ["Image model", esc(s.art.generator ?? "not configured")],
     ["Prompt writer", esc(s.art.promptWriter)],
-    ["Schedule", `new piece every ${s.art.intervalMinutes} min, rotate every ${s.art.rotateMinutes} min`],
+    ["Schedule", `new piece ${esc(s.art.schedule)}; saved art rotates every ${s.art.rotateMinutes} min`],
+    ["Spend (est.)", spendText(s.art.usage, s.art.limits)],
     ["Quiet hours", s.art.quietHours ? `${s.art.quietHours[0]}:00–${s.art.quietHours[1]}:00` : "off"],
     ["Archive", `${s.art.counts.ai} AI pieces, ${s.art.counts.photos} photos`],
     ...(s.art.lastError ? ([["Last error", `<span class="error">${esc(s.art.lastError)}</span>`]] as [string, string][]) : []),

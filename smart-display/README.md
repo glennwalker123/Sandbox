@@ -19,10 +19,25 @@ Planned later: music, voice (mic) and presence detection (camera), and Home Assi
    └─ Chromium kiosk ─► web/ (Vite + TS, no framework) ─────┘
 ```
 
-- **Art rotation:** a new AI piece is generated every `ART_INTERVAL_MINUTES` (default 3 h). In between, the display rotates through the archive every `ART_ROTATE_MINUTES`. Nothing is generated during `QUIET_HOURS`, and the panel collapses to a dim clock. With roughly six generations a day, image costs stay small.
+- **Art rotation:** a new AI piece is painted once a day (`ART_SCHEDULE=daily@07:00`, or `every:180` for more). In between, the display rotates through the saved archive every `ART_ROTATE_MINUTES`, at no cost. Nothing is generated during `QUIET_HOURS`, and the panel collapses to a dim clock.
 - **Fallbacks:** if there is no network or no keys, it keeps showing the last good weather and calendar data and the archived art, or generated placeholder landscapes on a fresh install.
 - **Google Photos:** Google no longer lets apps read a whole library or album (2025 API change). Instead you choose photos in Google's own picker, from the setup page on your phone, and they are downloaded and kept locally. `ART_SOURCE=alternate` mixes them with the AI art.
 - **Privacy:** calendar event titles are sent to Claude only to theme the art. Set `ART_USE_CALENDAR=0` to turn that off. Images never contain text.
+
+## What it costs
+
+Each new AI piece is a paid image API call. Claude writing the prompt adds well under a cent.
+
+| Schedule | Pieces / month | Rough cost |
+|---|---|---|
+| Daily (default) | ~30 | **~$1–1.50** |
+| Every 3 h (not overnight) | ~180 | ~$5–8 |
+
+These are estimates of about $0.02–0.05 per image at medium quality, from third-party price lists in November 2026. Check Google's or OpenAI's current pricing.
+
+- **Spend limits:** `ART_MAX_PER_DAY` (default 3) and an optional `ART_MONTHLY_BUDGET` stop all paid calls once reached; the display keeps showing saved art.
+- **Tracking:** the setup page shows pieces made today and this month, and the estimated spend.
+- **Free options:** `ART_SOURCE=photos` (Google Photos only) or `mock` (built-in placeholder art) cost nothing.
 
 ## Quick start (any computer)
 

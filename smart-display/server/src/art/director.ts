@@ -1,9 +1,10 @@
 import { orientationOf, type ArtPiece, type Orientation, type Shape } from "../../../shared/types.ts";
-import { isQuietHour, type Config } from "../config.ts";
+import { isQuietHour, type ArtSchedule, type Config } from "../config.ts";
 import { createGenerator, type ImageGenerator } from "./generators.ts";
 import { mockArtSvg } from "./mockArt.ts";
 import { buildContext, writePrompt, type ArtContext } from "./prompt.ts";
 import type { ArtStore } from "./store.ts";
+import { UsageLog } from "./usage.ts";
 
 export interface DirectorDeps {
   cfg: Config;
@@ -12,21 +13,35 @@ export interface DirectorDeps {
   onChange: (piece: ArtPiece) => void;
   generator?: ImageGenerator | null;
   now?: () => number;
+  usage?: UsageLog;
 }
 
 const LANDSCAPE: Shape = { width: 16, height: 9 };
 const PORTRAIT: Shape = { width: 3, height: 4 };
 /** After a rotation with no matching AI art, wait at least this long since the last attempt before generating. */
 const RESHAPE_MIN_GAP = 5 * 60_000;
+/** After a failed attempt, wait this long before trying again. */
+const RETRY_GAP = 30 * 60_000;
+
+/** Is a scheduled generation due, given when the last piece was successfully made? */
+export function isDue(schedule: ArtSchedule, now: number, lastGeneratedAt: number): boolean {
+  if (schedule.kind === "every") return now - lastGeneratedAt >= schedule.minutes * 60_000;
+  const slot = new Date(now);
+  slot.setHours(schedule.hour, schedule.minute, 0, 0);
+  if (slot.getTime() > now) slot.setDate(slot.getDate() - 1); // most recent slot that has passed
+  return lastGeneratedAt < slot.getTime();
+}
 
 /**
  * Decides what's on the wall: generates a new AI piece every
- * `intervalMinutes` (outside quiet hours), and in between rotates through the
+ * the configured schedule (outside quiet hours, within the spend limits), and in between rotates through the
  * archive and/or the picked Google Photos every `rotateMinutes`.
  */
 export class ArtDirector {
   private current: ArtPiece | null = null;
-  private lastGeneratedAt = 0;
+  private lastGeneratedAt = 0; // last success
+  private lastAttemptAt = 0;
+  readonly usage: UsageLog;
   private lastRotatedAt = 0;
   private generating: Promise<ArtPiece | null> | null = null;
   private lastPool: "ai" | "photos" = "photos";
@@ -38,6 +53,7 @@ export class ArtDirector {
 
   constructor(private readonly d: DirectorDeps) {
     this.generator = d.generator === undefined ? createGenerator(d.cfg) : d.generator;
+    this.usage = d.usage ?? new UsageLog(null);
     const fixed = d.cfg.art.orientation;
     this.shape = fixed === "portrait" ? PORTRAIT : LANDSCAPE;
   }
@@ -65,7 +81,7 @@ export class ArtDirector {
     const now = this.now();
     const quiet = isQuietHour(new Date(now).getHours(), this.d.cfg.art.quietHours);
     const hasMatchingAi = this.d.stores.ai.list().some((p) => this.matches(p));
-    if (this.usesAi && this.generator && !hasMatchingAi && !quiet && now - this.lastGeneratedAt >= RESHAPE_MIN_GAP) {
+    if (this.usesAi && this.generator && !hasMatchingAi && !quiet && now - this.lastAttemptAt >= RESHAPE_MIN_GAP) {
       if (await this.generateNow()) return;
     }
     await this.next();
@@ -94,6 +110,7 @@ export class ArtDirector {
 
   async start() {
     await Promise.all(Object.values(this.d.stores).map((s) => s.load()));
+    await this.usage.load();
     this.lastGeneratedAt = this.d.stores.ai.list()[0]?.createdAt ?? 0;
     await this.tick();
     this.timer = setInterval(() => void this.tick(), 60_000);
@@ -114,7 +131,7 @@ export class ArtDirector {
       return;
     }
 
-    const due = now - this.lastGeneratedAt >= art.intervalMinutes * 60_000;
+    const due = isDue(art.schedule, now, this.lastGeneratedAt) && now - this.lastAttemptAt >= RETRY_GAP;
     if (this.usesAi && this.generator && due && !quiet) {
       const piece = await this.generateNow();
       if (piece) return;
@@ -160,11 +177,22 @@ export class ArtDirector {
   }
 
   /** Generate a fresh AI piece right now (deduplicates concurrent calls). */
+  /** Why a new (paid) piece can't be made right now, or null. */
+  blockedReason(): string | null {
+    const { maxPerDay, monthlyBudget, costPerImage } = this.d.cfg.art;
+    return this.usage.blockedReason(this.now(), { maxPerDay, monthlyBudget, costPerImage });
+  }
+
   generateNow(): Promise<ArtPiece | null> {
     if (!this.generator) return Promise.resolve(null);
     this.generating ??= (async () => {
       const startedAt = this.now();
       try {
+        const blocked = this.blockedReason();
+        if (blocked) {
+          this.lastError = blocked;
+          return null;
+        }
         const ctx = this.d.context();
         const recent = this.d.stores.ai.list().slice(0, 8).flatMap((p) => (p.title ? [p.title] : []));
         const { prompt, title } = await writePrompt(ctx, this.d.cfg, recent);
@@ -172,6 +200,8 @@ export class ArtDirector {
         const shape = this.shape;
         const img = await this.generator!.generate(prompt, shape);
         const piece = await this.d.stores.ai.save(img.data, img.ext, { prompt, title, orientation: orientationOf(shape) });
+        await this.usage.record({ at: startedAt, model: this.generator!.name, cost: this.d.cfg.art.costPerImage });
+        this.lastGeneratedAt = startedAt;
         this.lastError = null;
         this.cursor.set(`ai:${orientationOf(shape)}`, 0);
         this.lastPool = "ai";
@@ -182,8 +212,8 @@ export class ArtDirector {
         console.warn("[art] generation failed:", this.lastError);
         return null;
       } finally {
-        // Back off a full interval even on failure, so a bad key can't burn money in a loop.
-        this.lastGeneratedAt = startedAt;
+        // Successes and failures both count as attempts, so a broken key or model is retried only every 30 min.
+        this.lastAttemptAt = startedAt;
         this.generating = null;
       }
     })();
