@@ -10,6 +10,7 @@ export const WEB_DIST = path.join(ROOT_DIR, "web/dist");
 
 export type ArtMix = "ai" | "photos" | "alternate" | "mock";
 export type ImageProvider = "openai" | "gemini";
+export type ArtOrientation = "auto" | "landscape" | "portrait";
 
 export interface CalendarSource {
   name?: string;
@@ -21,11 +22,13 @@ export interface Config {
   mock: boolean;
   location: { name: string; latitude: number; longitude: number };
   units: Units;
+  uiScale: number;
   calendars: CalendarSource[];
   calendarDays: number;
   art: {
     mix: ArtMix;
     provider: ImageProvider;
+    orientation: ArtOrientation;
     style: string;
     useCalendar: boolean;
     intervalMinutes: number;
@@ -99,11 +102,13 @@ export function loadConfig(env: Env = process.env): Config {
       longitude: num(env.LONGITUDE, -0.1276),
     },
     units: env.UNITS === "imperial" ? "imperial" : "metric",
+    uiScale: Math.min(3, Math.max(0.5, num(env.UI_SCALE, 1))),
     calendars: parseCalendars(env.CALENDAR_ICS_URLS),
     calendarDays: num(env.CALENDAR_DAYS, 7),
     art: {
       mix: mock ? "mock" : ["ai", "photos", "alternate", "mock"].includes(mix) ? mix : "ai",
       provider: env.IMAGE_PROVIDER === "openai" ? "openai" : "gemini",
+      orientation: env.ART_ORIENTATION === "landscape" || env.ART_ORIENTATION === "portrait" ? env.ART_ORIENTATION : "auto",
       style:
         env.ART_STYLE ??
         "museum-quality fine art, painterly, rich texture, calm and contemplative, suitable for a living-room wall",

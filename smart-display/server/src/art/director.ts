@@ -1,4 +1,4 @@
-import type { ArtPiece } from "../../../shared/types.ts";
+import { orientationOf, type ArtPiece, type Orientation, type Shape } from "../../../shared/types.ts";
 import { isQuietHour, type Config } from "../config.ts";
 import { createGenerator, type ImageGenerator } from "./generators.ts";
 import { mockArtSvg } from "./mockArt.ts";
@@ -14,6 +14,11 @@ export interface DirectorDeps {
   now?: () => number;
 }
 
+const LANDSCAPE: Shape = { width: 16, height: 9 };
+const PORTRAIT: Shape = { width: 3, height: 4 };
+/** After a rotation with no matching AI art, wait at least this long since the last attempt before generating. */
+const RESHAPE_MIN_GAP = 5 * 60_000;
+
 /**
  * Decides what's on the wall: generates a new AI piece every
  * `intervalMinutes` (outside quiet hours), and in between rotates through the
@@ -27,11 +32,48 @@ export class ArtDirector {
   private lastPool: "ai" | "photos" = "photos";
   private cursor = new Map<string, number>();
   private timer: NodeJS.Timeout | null = null;
+  private shape: Shape;
   readonly generator: ImageGenerator | null;
   lastError: string | null = null;
 
   constructor(private readonly d: DirectorDeps) {
     this.generator = d.generator === undefined ? createGenerator(d.cfg) : d.generator;
+    const fixed = d.cfg.art.orientation;
+    this.shape = fixed === "portrait" ? PORTRAIT : LANDSCAPE;
+  }
+
+  get orientation(): Orientation {
+    return orientationOf(this.shape);
+  }
+
+  /**
+   * The display reports its viewport. With ART_ORIENTATION=auto the art follows
+   * it; on a rotation we switch to a matching piece straight away.
+   */
+  async setShape(shape: Shape) {
+    if (this.d.cfg.art.orientation !== "auto" || !(shape.width > 0 && shape.height > 0)) return;
+    const before = this.orientation;
+    this.shape = { width: shape.width, height: shape.height };
+    if (orientationOf(shape) !== before) await this.onReshape();
+  }
+
+  private async onReshape() {
+    if (this.d.cfg.art.mix === "mock") {
+      await this.generateMock();
+      return;
+    }
+    const now = this.now();
+    const quiet = isQuietHour(new Date(now).getHours(), this.d.cfg.art.quietHours);
+    const hasMatchingAi = this.d.stores.ai.list().some((p) => this.matches(p));
+    if (this.usesAi && this.generator && !hasMatchingAi && !quiet && now - this.lastGeneratedAt >= RESHAPE_MIN_GAP) {
+      if (await this.generateNow()) return;
+    }
+    await this.next();
+  }
+
+  private matches(p: ArtPiece): boolean {
+    // Photos are letterboxed, so they suit any orientation. Older pieces predate orientation tracking and are landscape.
+    return p.source === "photos" || (p.orientation ?? "landscape") === this.orientation;
   }
 
   private now() {
@@ -100,14 +142,19 @@ export class ArtDirector {
       // Alternate between pools, falling back to whichever has pieces.
       pools.sort((a) => (a === this.lastPool ? 1 : -1));
     }
-    for (const pool of pools) {
-      const list = this.d.stores[pool].list();
-      if (!list.length) continue;
-      const i = ((this.cursor.get(pool) ?? -1) + 1) % list.length;
-      const candidate = list[i].id === this.current?.id && list.length > 1 ? list[(i + 1) % list.length] : list[i];
-      this.cursor.set(pool, list.indexOf(candidate));
-      this.lastPool = pool;
-      return candidate;
+    // First pass: only pieces in the screen's orientation; second pass: anything.
+    for (const strict of [true, false]) {
+      for (const pool of pools) {
+        const all = this.d.stores[pool].list();
+        const list = strict ? all.filter((p) => this.matches(p)) : all;
+        if (!list.length) continue;
+        const key = `${pool}:${strict ? this.orientation : "any"}`;
+        const i = ((this.cursor.get(key) ?? -1) + 1) % list.length;
+        const candidate = list[i].id === this.current?.id && list.length > 1 ? list[(i + 1) % list.length] : list[i];
+        this.cursor.set(key, list.indexOf(candidate));
+        this.lastPool = pool;
+        return candidate;
+      }
     }
     return null;
   }
@@ -122,10 +169,11 @@ export class ArtDirector {
         const recent = this.d.stores.ai.list().slice(0, 8).flatMap((p) => (p.title ? [p.title] : []));
         const { prompt, title } = await writePrompt(ctx, this.d.cfg, recent);
         console.log(`[art] generating with ${this.generator!.name}: ${title ?? ""} — ${prompt}`);
-        const img = await this.generator!.generate(prompt);
-        const piece = await this.d.stores.ai.save(img.data, img.ext, { prompt, title });
+        const shape = this.shape;
+        const img = await this.generator!.generate(prompt, shape);
+        const piece = await this.d.stores.ai.save(img.data, img.ext, { prompt, title, orientation: orientationOf(shape) });
         this.lastError = null;
-        this.cursor.set("ai", 0);
+        this.cursor.set(`ai:${orientationOf(shape)}`, 0);
         this.lastPool = "ai";
         this.show(piece);
         return piece;
@@ -144,9 +192,10 @@ export class ArtDirector {
 
   private async generateMock(): Promise<ArtPiece> {
     const ctx = this.d.context();
-    const piece = await this.d.stores.mock.save(mockArtSvg(ctx, this.now()), "svg", {
+    const piece = await this.d.stores.mock.save(mockArtSvg(ctx, this.now(), this.shape), "svg", {
       title: `${ctx.season[0].toUpperCase()}${ctx.season.slice(1)} ${ctx.dayPart}`,
       prompt: "Placeholder art (mock mode)",
+      orientation: this.orientation,
     });
     this.show(piece);
     return piece;

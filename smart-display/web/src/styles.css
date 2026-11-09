@@ -1,12 +1,27 @@
+/*
+ * Sized in vmin (via --u) so the layout scales with the physical screen,
+ * whether it's an A4-size 3:2 panel or a TV, and in either orientation.
+ * --scale is set from UI_SCALE (or ?scale=) for viewing from further away.
+ */
 :root {
+  --scale: 1;
+  --u: calc(1vmin * var(--scale));
+  --gap: calc(3.2 * var(--u));
   --ink: #fbf8f2;
-  --ink-soft: rgba(251, 248, 242, 0.72);
-  --ink-faint: rgba(251, 248, 242, 0.5);
-  --glass: rgba(18, 16, 22, 0.38);
+  --ink-soft: rgba(251, 248, 242, 0.74);
+  --ink-faint: rgba(251, 248, 242, 0.52);
+  --glass: rgba(18, 16, 22, 0.4);
   --glass-edge: rgba(255, 255, 255, 0.14);
   --accent: #ffd59a;
-  --radius: 28px;
+  --rain: #a9d4ff;
+  --radius: calc(2.4 * var(--u));
   --fade: 2.4s;
+
+  /* How much the panel shows; read by main.ts. Trimmed further on cramped screens below. */
+  --max-events: 5;
+  --forecast-hours: 2;
+  --forecast-days: 3;
+
   font-family: "Inter", "SF Pro Display", "Segoe UI", system-ui, -apple-system, sans-serif;
   color: var(--ink);
   background: #0b0a0d;
@@ -36,96 +51,131 @@ body { cursor: none; user-select: none; background: #0b0a0d; }
 .vignette {
   background:
     radial-gradient(ellipse at 18% 85%, rgba(0, 0, 0, 0.45), transparent 55%),
-    linear-gradient(to top, rgba(0, 0, 0, 0.28), transparent 35%);
+    linear-gradient(to top, rgba(0, 0, 0, 0.3), transparent 38%);
   pointer-events: none;
 }
-.night-dim {
-  background: #000;
-  opacity: 0;
-  transition: opacity 30s linear;
-  pointer-events: none;
-}
+.night-dim { background: #000; opacity: 0; transition: opacity 30s linear; pointer-events: none; }
 body.night .night-dim { opacity: 0.45; }
 body.ambient .night-dim { opacity: 0.7; }
 
-/* --- panel ------------------------------------------------------------------ */
+/* --- panel (landscape default: frosted card, bottom-left) ------------------ */
 .panel {
   position: fixed;
-  left: clamp(20px, 3vw, 56px);
-  bottom: clamp(20px, 3vw, 56px);
-  width: clamp(320px, 31vw, 560px);
-  max-height: calc(100vh - 2 * clamp(20px, 3vw, 56px));
-  padding: clamp(20px, 2vw, 34px);
+  left: var(--gap);
+  bottom: var(--gap);
+  width: min(42vw, calc(64 * var(--u)));
+  max-height: calc(100vh - 2 * var(--gap));
+  padding: calc(3 * var(--u));
   border-radius: var(--radius);
   background: var(--glass);
   border: 1px solid var(--glass-edge);
   backdrop-filter: blur(22px) saturate(1.3);
   -webkit-backdrop-filter: blur(22px) saturate(1.3);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
-  display: flex; flex-direction: column; gap: clamp(14px, 1.6vw, 26px);
+  box-shadow: 0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(0, 0, 0, 0.25);
+  display: flex; flex-direction: column; gap: calc(2.4 * var(--u));
   overflow: hidden;
   transition: opacity 1.2s ease, transform 1.2s ease;
 }
-body.panel-hidden .panel { opacity: 0; transform: translateY(16px); pointer-events: none; }
+body.panel-hidden .panel { opacity: 0; transform: translateY(calc(1.5 * var(--u))); pointer-events: none; }
 body.ambient .panel { background: transparent; border-color: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 body.ambient .weather, body.ambient .agenda { display: none; }
 body.ambient .time { opacity: 0.55; }
 
 .time {
-  font-size: clamp(64px, 7.6vw, 148px);
+  font-size: calc(13 * var(--u));
   font-weight: 200;
   letter-spacing: -0.04em;
   line-height: 0.9;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .time .ampm { font-size: 0.32em; font-weight: 400; letter-spacing: 0; margin-left: 0.2em; color: var(--ink-soft); }
-.date { margin-top: 8px; font-size: clamp(16px, 1.35vw, 26px); color: var(--ink-soft); font-weight: 400; }
+.date { margin-top: calc(0.9 * var(--u)); font-size: calc(2.5 * var(--u)); color: var(--ink-soft); white-space: nowrap; }
 
 /* --- weather ----------------------------------------------------------------- */
-.weather { display: flex; flex-direction: column; gap: 14px; }
-.now { display: flex; align-items: center; gap: 16px; }
-.now .icon { width: clamp(48px, 4.4vw, 80px); height: auto; flex: none; }
-.now .temp { font-size: clamp(40px, 3.8vw, 72px); font-weight: 300; line-height: 1; }
-.now .desc { display: flex; flex-direction: column; gap: 3px; font-size: clamp(14px, 1.05vw, 19px); color: var(--ink-soft); }
-.now .desc strong { color: var(--ink); font-weight: 500; font-size: 1.1em; }
-.forecast { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-.forecast .slot { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: clamp(12px, 0.9vw, 16px); color: var(--ink-soft); }
-.forecast .slot svg { width: clamp(24px, 1.9vw, 34px); height: auto; }
+.weather { display: flex; flex-direction: column; gap: calc(1.8 * var(--u)); }
+.now { display: flex; align-items: center; gap: calc(1.6 * var(--u)); }
+.now .icon { width: calc(7 * var(--u)); height: auto; flex: none; }
+.now .temp { font-size: calc(6.4 * var(--u)); font-weight: 300; line-height: 1; }
+.now .desc { display: flex; flex-direction: column; gap: calc(0.3 * var(--u)); font-size: calc(1.9 * var(--u)); color: var(--ink-soft); white-space: nowrap; }
+.now .desc strong { color: var(--ink); font-weight: 500; font-size: 1.12em; }
+.forecast { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: calc(0.6 * var(--u)); }
+.forecast .slot { display: flex; flex-direction: column; align-items: center; gap: calc(0.4 * var(--u)); font-size: calc(1.6 * var(--u)); color: var(--ink-soft); white-space: nowrap; }
+.forecast .slot svg { width: calc(3.2 * var(--u)); height: auto; }
 .forecast .slot .hi { color: var(--ink); font-weight: 500; }
-.forecast .slot .rain { font-size: 0.85em; color: #a9d4ff; min-height: 1.1em; }
+.forecast .slot .rain { font-size: 0.85em; color: var(--rain); min-height: 1.1em; }
 
 /* --- agenda ------------------------------------------------------------------ */
-.agenda { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.agenda { display: flex; flex-direction: column; gap: calc(1 * var(--u)); min-height: 0; }
 .agenda h3 {
-  font-size: clamp(11px, 0.8vw, 14px); font-weight: 600; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--ink-faint); margin-top: 4px;
+  font-size: calc(1.3 * var(--u)); font-weight: 600; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-faint); margin-top: calc(0.4 * var(--u));
 }
-.event { display: grid; grid-template-columns: 4.6em 1fr; gap: 12px; align-items: baseline; font-size: clamp(15px, 1.1vw, 20px); }
+.event { display: grid; grid-template-columns: 4.6em 1fr; gap: calc(1.2 * var(--u)); align-items: baseline; font-size: calc(2.1 * var(--u)); }
 .event .when { color: var(--ink-soft); font-variant-numeric: tabular-nums; font-size: 0.9em; }
 .event .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .event .where { display: block; font-size: 0.78em; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; }
-.event.now .when { color: var(--accent); }
-.event.now .what { color: var(--accent); }
-.event.past { opacity: 0.45; }
-.empty { color: var(--ink-faint); font-size: clamp(14px, 1vw, 18px); }
+.event.now .when, .event.now .what { color: var(--accent); }
+.empty { color: var(--ink-faint); font-size: calc(1.9 * var(--u)); }
 
 /* --- caption & status --------------------------------------------------------- */
 .caption {
-  position: fixed; right: clamp(20px, 3vw, 56px); bottom: clamp(20px, 3vw, 56px);
-  max-width: 34vw; text-align: right; font-size: clamp(12px, 0.85vw, 15px);
+  position: fixed; right: var(--gap); bottom: var(--gap);
+  max-width: 34vw; text-align: right; font-size: calc(1.5 * var(--u));
   color: var(--ink-faint); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
   transition: opacity 1.5s;
 }
 .caption .title { color: var(--ink-soft); font-style: italic; font-size: 1.15em; }
 body.ambient .caption { opacity: 0; }
 .offline {
-  position: fixed; top: 18px; right: 18px; width: 10px; height: 10px; border-radius: 50%;
+  position: fixed; top: calc(1.8 * var(--u)); left: calc(1.8 * var(--u));
+  width: calc(1 * var(--u)); height: calc(1 * var(--u)); border-radius: 50%;
   background: #ff8a65; box-shadow: 0 0 10px #ff8a65; opacity: 0; transition: opacity 0.6s;
 }
 body.disconnected .offline { opacity: 0.9; }
 
-/* Portrait screens: panel across the bottom. */
+/* Squarer landscape screens (3:2, 4:3) have less height to spare relative to vmin. */
+@media (orientation: landscape) and (max-aspect-ratio: 16/10) {
+  :root { --max-events: 4; }
+  .panel { width: min(46vw, calc(64 * var(--u))); }
+}
+
+/* --- portrait: a band across the bottom, like the mount under a print ----------- */
 @media (orientation: portrait) {
-  .panel { width: auto; right: clamp(20px, 3vw, 56px); }
-  .caption { top: clamp(20px, 3vw, 56px); bottom: auto; max-width: 60vw; }
+  :root { --max-events: 3; --forecast-hours: 3; --forecast-days: 3; }
+  .vignette {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent 45%);
+  }
+  .panel {
+    right: var(--gap);
+    width: auto;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "clock now"
+      "forecast forecast"
+      "agenda agenda";
+    column-gap: calc(3 * var(--u));
+    row-gap: calc(2.6 * var(--u));
+    align-items: center;
+  }
+  .clock { grid-area: clock; }
+  .weather { display: contents; }
+  .now { grid-area: now; justify-self: end; }
+  .forecast { grid-area: forecast; padding-top: calc(2 * var(--u)); border-top: 1px solid var(--glass-edge); }
+  .agenda { grid-area: agenda; align-self: start; }
+  .time { font-size: calc(14 * var(--u)); }
+  .now .temp { font-size: calc(8 * var(--u)); }
+  .now .icon { width: calc(8.5 * var(--u)); }
+  .event { font-size: calc(2.6 * var(--u)); }
+  .agenda h3 { font-size: calc(1.6 * var(--u)); }
+  .forecast .slot { font-size: calc(1.9 * var(--u)); }
+  .forecast .slot svg { width: calc(3.8 * var(--u)); }
+  .caption { top: var(--gap); bottom: auto; max-width: 60vw; }
+  body.ambient .panel { grid-template-areas: "clock clock"; }
+}
+
+/* Very tall portrait (9:16): room for one more event. */
+@media (orientation: portrait) and (max-aspect-ratio: 10/16) {
+  :root { --max-events: 4; }
 }

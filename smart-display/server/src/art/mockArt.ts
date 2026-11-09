@@ -1,4 +1,5 @@
 import type { ArtContext } from "./prompt.ts";
+import type { Shape } from "../../../shared/types.ts";
 
 /**
  * Offline placeholder "art": a layered SVG landscape tinted by season and time
@@ -38,15 +39,17 @@ function ridge(rand: () => number, baseY: number, amp: number, w: number, h: num
   return pts.join(" ");
 }
 
-export function mockArtSvg(ctx: ArtContext, seed = Date.now()): string {
-  const w = 1920;
-  const h = 1080;
+export function mockArtSvg(ctx: ArtContext, seed = Date.now(), shape: Shape = { width: 16, height: 9 }): string {
+  // Long side 1920, short side matching the screen's aspect.
+  const ratio = shape.width / shape.height;
+  const w = Math.round(ratio >= 1 ? 1920 : 1920 * ratio);
+  const h = Math.round(ratio >= 1 ? 1920 / ratio : 1920);
   const rand = rng(seed);
   const [sky1, sky2, land1, land2] = PALETTES[ctx.dayPart] ?? PALETTES.afternoon;
   const tint = SEASON_TINT[ctx.season];
   const night = ctx.dayPart === "night" || ctx.dayPart === "evening";
-  const sunX = 300 + rand() * 1300;
-  const sunY = night ? 180 + rand() * 120 : ctx.dayPart === "golden hour" || ctx.dayPart === "dawn" ? 620 : 260;
+  const sunX = w * 0.15 + rand() * w * 0.7;
+  const sunY = h * (night ? 0.17 + rand() * 0.1 : ctx.dayPart === "golden hour" || ctx.dayPart === "dawn" ? 0.57 : 0.24);
   const stars = night
     ? Array.from({ length: 90 }, () => `<circle cx="${(rand() * w).toFixed(0)}" cy="${(rand() * h * 0.55).toFixed(0)}" r="${(rand() * 1.6 + 0.3).toFixed(1)}" fill="#fff" opacity="${(rand() * 0.7 + 0.2).toFixed(2)}"/>`).join("")
     : "";
@@ -66,11 +69,11 @@ export function mockArtSvg(ctx: ArtContext, seed = Date.now()): string {
 </defs>
 <rect width="${w}" height="${h}" fill="url(#sky)"/>
 ${stars}
-<circle cx="${sunX.toFixed(0)}" cy="${sunY.toFixed(0)}" r="${night ? 160 : 260}" fill="url(#sun)"/>
-<path d="${ridge(rand, h * 0.62, 180, w, h)}" fill="${land1}" opacity="0.55"/>
-<path d="${ridge(rand, h * 0.72, 140, w, h)}" fill="${tint}" opacity="0.35"/>
-<path d="${ridge(rand, h * 0.8, 120, w, h)}" fill="${land1}" opacity="0.85"/>
-<path d="${ridge(rand, h * 0.9, 90, w, h)}" fill="${land2}"/>
+<circle cx="${sunX.toFixed(0)}" cy="${sunY.toFixed(0)}" r="${((night ? 0.15 : 0.24) * Math.min(w, h)).toFixed(0)}" fill="url(#sun)"/>
+<path d="${ridge(rand, h * 0.62, h * 0.17, w, h)}" fill="${land1}" opacity="0.55"/>
+<path d="${ridge(rand, h * 0.72, h * 0.13, w, h)}" fill="${tint}" opacity="0.35"/>
+<path d="${ridge(rand, h * 0.8, h * 0.11, w, h)}" fill="${land1}" opacity="0.85"/>
+<path d="${ridge(rand, h * 0.9, h * 0.08, w, h)}" fill="${land2}"/>
 ${rain}
 <rect width="${w}" height="${h}" filter="url(#grain)"/>
 </svg>`;

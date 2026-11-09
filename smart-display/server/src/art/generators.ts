@@ -1,4 +1,23 @@
 import type { Config } from "../config.ts";
+import { orientationOf, type Shape } from "../../../shared/types.ts";
+
+/** Imagen's supported ratios; pick the one closest to the screen's shape. */
+const IMAGEN_RATIOS = ["16:9", "4:3", "1:1", "3:4", "9:16"] as const;
+export function imagenAspect(shape: Shape): (typeof IMAGEN_RATIOS)[number] {
+  const target = Math.log(shape.width / shape.height);
+  let best: (typeof IMAGEN_RATIOS)[number] = "16:9";
+  let bestDiff = Infinity;
+  for (const r of IMAGEN_RATIOS) {
+    const [w, h] = r.split(":").map(Number);
+    const diff = Math.abs(Math.log(w / h) - target);
+    if (diff < bestDiff) [best, bestDiff] = [r, diff];
+  }
+  return best;
+}
+
+export function openaiSize(shape: Shape): "1536x1024" | "1024x1536" {
+  return orientationOf(shape) === "landscape" ? "1536x1024" : "1024x1536";
+}
 
 export interface GeneratedImage {
   data: Buffer;
@@ -7,7 +26,7 @@ export interface GeneratedImage {
 
 export interface ImageGenerator {
   name: string;
-  generate(prompt: string): Promise<GeneratedImage>;
+  generate(prompt: string, shape: Shape): Promise<GeneratedImage>;
 }
 
 async function postJson(url: string, body: unknown, headers: Record<string, string>) {
@@ -26,10 +45,10 @@ async function postJson(url: string, body: unknown, headers: Record<string, stri
 export function openaiGenerator(apiKey: string, model: string): ImageGenerator {
   return {
     name: `openai:${model}`,
-    async generate(prompt) {
+    async generate(prompt, shape) {
       const body = (await postJson(
         "https://api.openai.com/v1/images/generations",
-        { model, prompt, size: "1536x1024", n: 1 },
+        { model, prompt, size: openaiSize(shape), n: 1 },
         { authorization: `Bearer ${apiKey}` },
       )) as { data?: { b64_json?: string }[] };
       const b64 = body.data?.[0]?.b64_json;
@@ -43,10 +62,10 @@ export function openaiGenerator(apiKey: string, model: string): ImageGenerator {
 export function geminiGenerator(apiKey: string, model: string): ImageGenerator {
   return {
     name: `gemini:${model}`,
-    async generate(prompt) {
+    async generate(prompt, shape) {
       const body = (await postJson(
         `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:predict`,
-        { instances: [{ prompt }], parameters: { sampleCount: 1, aspectRatio: "16:9" } },
+        { instances: [{ prompt }], parameters: { sampleCount: 1, aspectRatio: imagenAspect(shape) } },
         { "x-goog-api-key": apiKey },
       )) as { predictions?: { bytesBase64Encoded?: string; mimeType?: string }[] };
       const p = body.predictions?.[0];

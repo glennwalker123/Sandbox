@@ -36,7 +36,7 @@ For real data, run `cp .env.example .env`, fill it in, then `npm run dev`. For p
 
 | Page | URL |
 |---|---|
-| Display | `/` (tap: show/hide panel · double-tap or → key: next piece) |
+| Display | `/` (tap: show/hide panel · double-tap or → key: next piece · `?scale=1.3` to enlarge) |
 | Setup / status (use from your phone) | `/setup.html` |
 
 `?clock=12` or `?clock=24` overrides the clock format.
@@ -52,20 +52,20 @@ npm run typecheck
 
 See [deploy/README.md](deploy/README.md).
 
-## Hardware notes
+## Hardware: A4-size build
 
-These come from research in November 2026. **Check prices and stock before buying.**
+The target is **A4 at most** (210×297 mm) and a matte, print-like look. The display hangs **portrait or landscape**: the layout follows the screen, and new art is generated in the matching shape (`ART_ORIENTATION=auto`). These notes come from research in November 2026; **check prices and fit before buying**.
 
-| Role | Pick | Why |
+**Watch the width.** Most 13.3" 16:9 monitors are 305–322 mm wide, which is over A4. 3:2 and 4:3 panels fit, and they look more like a print.
+
+| Role | Pick | Notes |
 |---|---|---|
-| Screen (paper-like) | **Samsung The Frame 32"** (~$530–600) | The matte "canvas" anti-glare finish is the most print-like HDMI panel available. Mounts flush. 1080p, no touch. |
-| Screen (touch) | **Dell P2424HT** 23.8" (~$330–400 / £299) | Matte anti-glare, 10-point USB touch that works on Linux. Needs a frame built around it for the wall. |
-| Screen (budget) | **Raspberry Pi Monitor 15.6"** (~$100 / £75) + matte paper-feel film | Native to the Pi, thin, VESA mount, built-in speakers. Dimmer (~250 nits). |
-| Screen (true e-paper) | **Pimoroni Inky Impression 13.3"** Spectra 6 (~£191–230) | Looks exactly like a print, but 6 muted colours and a ~12 s refresh. SPI rather than HDMI, so it needs a render-to-image mode (see roadmap). No music or video UI. |
-| Mic | **ReSpeaker XVF3800 USB 4-mic array** (~$60 / £38–53) | On-board echo cancellation and beamforming, so the wake word still works while music plays. |
-| Camera | **Pi Camera Module 3 Wide** (~$35–45) + **Pi 5 ribbon cable** | 120° field of view for presence detection. Add a privacy cover. Alternative: a Logitech Brio 101 (USB, shutter). |
+| Screen (recommended) | **Framework 13 matte display kit**: 13.5", 2256×1504, 3:2, genuinely matte + an eDP→HDMI driver board (~£30–50) | The best matte panel that fits A4, and 3:2 suits art. Small DIY job (ribbon + board). Outline fit is likely but unverified, so measure before cutting the frame. |
+| Screen (plug-and-play) | **Waveshare 11.6" HDMI LCD (H)**, 1920×1080, 10-point touch (~£110–140) | Fits A4 easily and works out of the box with touch. The glass is **glossy**, so add a matte anti-glare film. 16:9 is narrow in portrait. |
+| Mic | **ReSpeaker Lite** (35×86 mm, USB, echo cancellation) or **XVF3800** (≈100 mm square) | Needs small holes in the mat or frame. Echo cancellation only works on music played through the board's own audio output. |
+| Camera | **Pi Camera Module 3 (Wide)** + the Pi 5 **mini camera cable** | 25×24 mm; needs a pinhole in the mat. Add a privacy cover. |
 
-The Dell **P2424HEB** is the only screen found with a built-in camera (with shutter) and mics. TCL NXTPAPER isn't sold as an HDMI monitor, and the Meural Canvas has no HDMI input.
+Allow a **25–35 mm deep box** behind the frame for the Pi 5 with its cooler, the driver board, the mic and the camera. Avoid USB-C-only monitors: the Pi 5 can't output video over USB-C. True colour e-paper at this size (Pimoroni Inky Impression 13.3") would fit but was ruled out: it has muted colours and slow refreshes, and can't run music or home-control screens.
 
 ## Roadmap
 

@@ -63,6 +63,15 @@ export interface CalendarData {
 
 export type ArtSourceKind = "ai" | "photos" | "mock";
 
+export type Orientation = "landscape" | "portrait";
+
+export interface Shape {
+  width: number;
+  height: number;
+}
+
+export const orientationOf = (s: Shape): Orientation => (s.width >= s.height ? "landscape" : "portrait");
+
 export interface ArtPiece {
   id: string;
   url: string; // served path, e.g. /art/ai/123.png
@@ -70,6 +79,7 @@ export interface ArtPiece {
   createdAt: number;
   prompt?: string;
   title?: string;
+  orientation?: Orientation; // AI/mock pieces; photos are letterboxed so any works
 }
 
 export interface DisplayConfig {
@@ -77,6 +87,7 @@ export interface DisplayConfig {
   units: Units;
   quietHours: [number, number] | null; // [startHour, endHour) local time
   mock: boolean;
+  uiScale: number;
 }
 
 export interface DisplayState {

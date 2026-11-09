@@ -24,4 +24,13 @@ describe("config", () => {
     expect(loadConfig({ MOCK: "1", ART_SOURCE: "ai" }).art.mix).toBe("mock");
     expect(loadConfig({ ART_SOURCE: "alternate", IMAGE_PROVIDER: "openai" }).art).toMatchObject({ mix: "alternate", provider: "openai" });
   });
+
+  it("parses orientation and UI scale with sane bounds", () => {
+    expect(loadConfig({}).art.orientation).toBe("auto");
+    expect(loadConfig({ ART_ORIENTATION: "portrait" }).art.orientation).toBe("portrait");
+    expect(loadConfig({ ART_ORIENTATION: "sideways" }).art.orientation).toBe("auto");
+    expect(loadConfig({ UI_SCALE: "1.4" }).uiScale).toBe(1.4);
+    expect(loadConfig({ UI_SCALE: "9" }).uiScale).toBe(3);
+    expect(loadConfig({ UI_SCALE: "abc" }).uiScale).toBe(1);
+  });
 });

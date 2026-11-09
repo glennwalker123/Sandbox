@@ -6,14 +6,34 @@ import { renderWeather } from "./widgets/weather.ts";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const body = document.body;
+const root = document.documentElement;
 const art = new ArtView($("art"), $("caption"));
+const params = new URLSearchParams(location.search);
 
 let state: DisplayState = {
-  config: { locationName: "", units: "metric", quietHours: null, mock: false },
+  config: { locationName: "", units: "metric", quietHours: null, mock: false, uiScale: 1 },
   weather: null,
   calendar: null,
   art: null,
 };
+
+/** How much the panel shows is set in CSS per screen shape (see styles.css :root). */
+function layout() {
+  const css = getComputedStyle(root);
+  const int = (name: string, fallback: number) => {
+    const n = parseInt(css.getPropertyValue(name), 10);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  return {
+    maxEvents: int("--max-events", 5),
+    slots: { hours: int("--forecast-hours", 2), days: int("--forecast-days", 3) },
+  };
+}
+
+function applyScale() {
+  const scale = Number(params.get("scale")) || state.config.uiScale || 1;
+  root.style.setProperty("--scale", String(scale));
+}
 
 function inQuietHours(): boolean {
   const q = state.config.quietHours;
@@ -30,10 +50,15 @@ function updateModes() {
   body.classList.toggle("ambient", inQuietHours());
 }
 
+const drawClock = () => renderClock($("time"), $("date"), state.config.units);
+const drawWeather = () => renderWeather($("weather"), state.weather, layout().slots);
+const drawAgenda = () => renderAgenda($("agenda"), state.calendar, state.config.units, layout().maxEvents);
+
 function renderAll() {
-  renderClock($("time"), $("date"), state.config.units);
-  renderWeather($("weather"), state.weather);
-  renderAgenda($("agenda"), state.calendar, state.config.units);
+  applyScale();
+  drawClock();
+  drawWeather();
+  drawAgenda();
   void art.show(state.art);
   updateModes();
 }
@@ -42,16 +67,18 @@ function renderAll() {
 function scheduleTick() {
   const ms = 60_000 - (Date.now() % 60_000) + 50;
   setTimeout(() => {
-    renderClock($("time"), $("date"), state.config.units);
-    renderAgenda($("agenda"), state.calendar, state.config.units);
-    renderWeather($("weather"), state.weather);
+    drawClock();
+    drawAgenda();
+    drawWeather();
     updateModes();
     scheduleTick();
   }, ms);
 }
 
+const shapeQuery = () => `w=${window.innerWidth}&h=${window.innerHeight}`;
+
 function connect() {
-  const es = new EventSource("/api/stream");
+  const es = new EventSource(`/api/stream?${shapeQuery()}`);
   es.addEventListener("open", () => body.classList.remove("disconnected"));
   es.addEventListener("error", () => body.classList.add("disconnected"));
   es.addEventListener("state", (e) => {
@@ -60,18 +87,38 @@ function connect() {
   });
   es.addEventListener("weather", (e) => {
     state.weather = JSON.parse((e as MessageEvent).data) as Weather;
-    renderWeather($("weather"), state.weather);
+    drawWeather();
     updateModes();
   });
   es.addEventListener("calendar", (e) => {
     state.calendar = JSON.parse((e as MessageEvent).data) as CalendarData;
-    renderAgenda($("agenda"), state.calendar, state.config.units);
+    drawAgenda();
   });
   es.addEventListener("art", (e) => {
     state.art = JSON.parse((e as MessageEvent).data) as ArtPiece;
     void art.show(state.art);
   });
 }
+
+// Screen rotated or resized: re-lay out now, and tell the server so new art matches.
+let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+let lastOrientation = window.innerWidth >= window.innerHeight;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    drawWeather();
+    drawAgenda();
+    const landscape = window.innerWidth >= window.innerHeight;
+    if (landscape !== lastOrientation) {
+      lastOrientation = landscape;
+      void fetch("/api/display/shape", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ w: window.innerWidth, h: window.innerHeight }),
+      });
+    }
+  }, 400);
+});
 
 // Touch / click: tap toggles the info panel; double-tap skips to the next piece.
 let lastTap = 0;
@@ -95,6 +142,7 @@ document.addEventListener("keydown", (e) => {
 // Reload once a day so a long-running kiosk picks up new frontend builds and frees memory.
 setTimeout(() => location.reload(), 24 * 3_600_000 + Math.random() * 600_000);
 
-renderClock($("time"), $("date"), state.config.units);
+applyScale();
+drawClock();
 scheduleTick();
 connect();

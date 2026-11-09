@@ -49,7 +49,7 @@ const photos = new GooglePhotos(cfg, stores.photos, path.join(DATA_DIR, "google-
 
 function state(): DisplayState {
   return {
-    config: { locationName: cfg.location.name, units: cfg.units, quietHours: cfg.art.quietHours, mock: cfg.mock },
+    config: { locationName: cfg.location.name, units: cfg.units, quietHours: cfg.art.quietHours, mock: cfg.mock, uiScale: cfg.uiScale },
     weather: weather.peek() ?? null,
     calendar: calendar.peek() ?? null,
     art: director.piece,
@@ -85,9 +85,17 @@ if (fs.existsSync(WEB_DIST)) {
 
 app.get("/api/state", async () => state());
 
-app.get("/api/stream", (req, reply) => {
+app.get<{ Querystring: { w?: string; h?: string } }>("/api/stream", (req, reply) => {
+  // The display tells us its size so the art can match its orientation.
+  // Not awaited: a rotation may trigger a slow generation, which arrives later as an "art" event.
+  void director.setShape({ width: Number(req.query.w), height: Number(req.query.h) });
   reply.hijack();
   hub.add(reply.raw, { type: "state", data: state() });
+});
+
+app.post<{ Body: { w?: number; h?: number } }>("/api/display/shape", async (req) => {
+  void director.setShape({ width: Number(req.body?.w), height: Number(req.body?.h) });
+  return { ok: true };
 });
 
 app.post("/api/art/next", async () => ({ art: await director.next() }));
@@ -113,6 +121,7 @@ app.get("/api/status", async () => ({
   calendar: { ok: Boolean(calendar.peek()), events: calendar.peek()?.events.length ?? 0, error: errMsg(calendar.lastError) },
   art: {
     mix: cfg.art.mix,
+    orientation: `${director.orientation}${cfg.art.orientation === "auto" ? " (follows screen)" : " (fixed)"}`,
     generator: director.generator?.name ?? null,
     promptWriter: cfg.keys.anthropic ? cfg.models.prompt : "built-in template",
     intervalMinutes: cfg.art.intervalMinutes,

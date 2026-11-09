@@ -1,16 +1,14 @@
 import type { CalendarData, CalendarEvent } from "../../../shared/types.ts";
 import { dayLabel, esc, fmtTime, startOfDay, uses12h } from "../util.ts";
 
-const MAX_EVENTS = 6;
-
-export function renderAgenda(el: HTMLElement, cal: CalendarData | null, units: "metric" | "imperial") {
+export function renderAgenda(el: HTMLElement, cal: CalendarData | null, units: "metric" | "imperial", maxEvents = 5) {
   if (!cal) {
     el.innerHTML = "";
     return;
   }
   const now = Date.now();
   const h12 = uses12h(units);
-  const upcoming = cal.events.filter((e) => e.end > now).slice(0, MAX_EVENTS);
+  const upcoming = cal.events.filter((e) => e.end > now).slice(0, maxEvents);
   if (!upcoming.length) {
     el.innerHTML = `<h3>Coming up</h3><div class="empty">Nothing on the calendar this week</div>`;
     return;

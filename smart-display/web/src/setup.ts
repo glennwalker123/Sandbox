@@ -9,6 +9,7 @@ interface Status {
   calendar: { ok: boolean; events: number; error: string | null };
   art: {
     mix: string;
+    orientation: string;
     generator: string | null;
     promptWriter: string;
     intervalMinutes: number;
@@ -36,6 +37,7 @@ async function load() {
     ["Showing", cur ? esc(cur.title ?? cur.source) : "—"],
     ...(cur?.prompt ? ([["Prompt", esc(cur.prompt)]] as [string, string][]) : []),
     ["Source", esc(s.art.mix)],
+    ["Orientation", esc(s.art.orientation)],
     ["Image model", esc(s.art.generator ?? "not configured")],
     ["Prompt writer", esc(s.art.promptWriter)],
     ["Schedule", `new piece every ${s.art.intervalMinutes} min, rotate every ${s.art.rotateMinutes} min`],

@@ -84,3 +84,52 @@ describe("ArtDirector", () => {
     for (let i = 1; i < sources.length; i++) expect(sources[i]).not.toBe(sources[i - 1]);
   });
 });
+
+describe("ArtDirector orientation", () => {
+  it("generates in the screen's shape and prefers matching pieces after a rotation", async () => {
+    const shapes: string[] = [];
+    const gen: ImageGenerator = {
+      name: "fake",
+      async generate(_p, shape) {
+        shapes.push(shape.width >= shape.height ? "landscape" : "portrait");
+        return { data: Buffer.from("png"), ext: "png" };
+      },
+    };
+    const { director, shown, advance } = await setup(
+      { ART_SOURCE: "ai", ART_INTERVAL_MINUTES: "600", ART_ROTATE_MINUTES: "10" },
+      gen,
+      Date.now(),
+    );
+    await director.start();
+    director.stop();
+    expect(shown.at(-1)?.orientation).toBe("landscape");
+
+    // Rotating soon after a generation waits for the minimum gap, showing the landscape piece meanwhile.
+    advance(60_000);
+    await director.setShape({ width: 1504, height: 2256 });
+    expect(shapes).toEqual(["landscape"]);
+
+    // Rotating back and forth after the gap generates a portrait piece once, then reuses it.
+    await director.setShape({ width: 2256, height: 1504 });
+    advance(6 * 60_000);
+    await director.setShape({ width: 1504, height: 2256 });
+    expect(shapes).toEqual(["landscape", "portrait"]);
+    expect(shown.at(-1)?.orientation).toBe("portrait");
+
+    await director.setShape({ width: 2256, height: 1504 });
+    expect(shown.at(-1)?.orientation).toBe("landscape");
+    advance(1_000);
+    await director.setShape({ width: 1504, height: 2256 });
+    expect(shapes).toHaveLength(2);
+    expect(shown.at(-1)?.orientation).toBe("portrait");
+  });
+
+  it("ignores the screen when orientation is fixed", async () => {
+    const { director, shown } = await setup({ ART_SOURCE: "mock", MOCK: "1", ART_ORIENTATION: "portrait" }, null, Date.now());
+    await director.start();
+    director.stop();
+    await director.setShape({ width: 1920, height: 1080 });
+    expect(director.orientation).toBe("portrait");
+    expect(shown.every((p) => p.orientation === "portrait")).toBe(true);
+  });
+});

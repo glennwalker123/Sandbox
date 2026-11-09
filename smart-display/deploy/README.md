@@ -50,7 +50,22 @@ If your user isn't `pi`, edit `User=` and `WorkingDirectory=` in the service fil
 
 3. Unplug the mouse (the page also hides the pointer while it's over the display). Reboot, and the art should come up full-screen.
 
-## 5. Screen schedule (optional)
+## 5. Portrait mounting
+
+Rotate the output, and the page re-lays itself out and starts painting portrait art:
+
+```bash
+wlr-randr                                   # find the output name, e.g. HDMI-A-1
+wlr-randr --output HDMI-A-1 --transform 90  # 270 if it's upside down
+```
+
+To make the rotation stick, add the same line to `~/.config/labwc/autostart`, *above* the `kiosk.sh` line. Alternatively, set it once in the Screen Configuration app, which saves it to `~/.config/kanshi/config`.
+
+If you use a laptop panel (e.g. the Framework display) through an eDP→HDMI board, the board passes on the panel's EDID, so the Pi should pick up the full resolution (e.g. 2256×1504) automatically. If it doesn't, check `wlr-randr` for the available modes.
+
+If the text feels small from across the room, set `UI_SCALE=1.2` (or higher) in `.env`.
+
+## 6. Screen schedule (optional)
 
 The page dims itself at night and during `QUIET_HOURS`. To switch the panel off completely, use `wlr-randr`. For example, add these lines with `crontab -e`:
 
