@@ -1,0 +1,131 @@
+:root {
+  --ink: #fbf8f2;
+  --ink-soft: rgba(251, 248, 242, 0.72);
+  --ink-faint: rgba(251, 248, 242, 0.5);
+  --glass: rgba(18, 16, 22, 0.38);
+  --glass-edge: rgba(255, 255, 255, 0.14);
+  --accent: #ffd59a;
+  --radius: 28px;
+  --fade: 2.4s;
+  font-family: "Inter", "SF Pro Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background: #0b0a0d;
+}
+
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { cursor: none; user-select: none; background: #0b0a0d; }
+
+/* --- art ------------------------------------------------------------------ */
+.art, .art-layer, .vignette, .night-dim { position: fixed; inset: 0; }
+.art-layer {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--fade) ease-in-out;
+  transform: scale(1.04);
+  animation: drift 90s ease-in-out infinite alternate;
+}
+.art-layer.visible { opacity: 1; }
+.art-layer.photo { object-fit: contain; animation: none; transform: none; }
+.art.photo-backdrop { background-size: cover; background-position: center; filter: blur(40px) brightness(0.55); }
+@keyframes drift {
+  from { transform: scale(1.04) translate(0, 0); }
+  to { transform: scale(1.08) translate(-1%, -0.6%); }
+}
+.vignette {
+  background:
+    radial-gradient(ellipse at 18% 85%, rgba(0, 0, 0, 0.45), transparent 55%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.28), transparent 35%);
+  pointer-events: none;
+}
+.night-dim {
+  background: #000;
+  opacity: 0;
+  transition: opacity 30s linear;
+  pointer-events: none;
+}
+body.night .night-dim { opacity: 0.45; }
+body.ambient .night-dim { opacity: 0.7; }
+
+/* --- panel ------------------------------------------------------------------ */
+.panel {
+  position: fixed;
+  left: clamp(20px, 3vw, 56px);
+  bottom: clamp(20px, 3vw, 56px);
+  width: clamp(320px, 31vw, 560px);
+  max-height: calc(100vh - 2 * clamp(20px, 3vw, 56px));
+  padding: clamp(20px, 2vw, 34px);
+  border-radius: var(--radius);
+  background: var(--glass);
+  border: 1px solid var(--glass-edge);
+  backdrop-filter: blur(22px) saturate(1.3);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  display: flex; flex-direction: column; gap: clamp(14px, 1.6vw, 26px);
+  overflow: hidden;
+  transition: opacity 1.2s ease, transform 1.2s ease;
+}
+body.panel-hidden .panel { opacity: 0; transform: translateY(16px); pointer-events: none; }
+body.ambient .panel { background: transparent; border-color: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+body.ambient .weather, body.ambient .agenda { display: none; }
+body.ambient .time { opacity: 0.55; }
+
+.time {
+  font-size: clamp(64px, 7.6vw, 148px);
+  font-weight: 200;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+.time .ampm { font-size: 0.32em; font-weight: 400; letter-spacing: 0; margin-left: 0.2em; color: var(--ink-soft); }
+.date { margin-top: 8px; font-size: clamp(16px, 1.35vw, 26px); color: var(--ink-soft); font-weight: 400; }
+
+/* --- weather ----------------------------------------------------------------- */
+.weather { display: flex; flex-direction: column; gap: 14px; }
+.now { display: flex; align-items: center; gap: 16px; }
+.now .icon { width: clamp(48px, 4.4vw, 80px); height: auto; flex: none; }
+.now .temp { font-size: clamp(40px, 3.8vw, 72px); font-weight: 300; line-height: 1; }
+.now .desc { display: flex; flex-direction: column; gap: 3px; font-size: clamp(14px, 1.05vw, 19px); color: var(--ink-soft); }
+.now .desc strong { color: var(--ink); font-weight: 500; font-size: 1.1em; }
+.forecast { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.forecast .slot { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: clamp(12px, 0.9vw, 16px); color: var(--ink-soft); }
+.forecast .slot svg { width: clamp(24px, 1.9vw, 34px); height: auto; }
+.forecast .slot .hi { color: var(--ink); font-weight: 500; }
+.forecast .slot .rain { font-size: 0.85em; color: #a9d4ff; min-height: 1.1em; }
+
+/* --- agenda ------------------------------------------------------------------ */
+.agenda { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.agenda h3 {
+  font-size: clamp(11px, 0.8vw, 14px); font-weight: 600; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-faint); margin-top: 4px;
+}
+.event { display: grid; grid-template-columns: 4.6em 1fr; gap: 12px; align-items: baseline; font-size: clamp(15px, 1.1vw, 20px); }
+.event .when { color: var(--ink-soft); font-variant-numeric: tabular-nums; font-size: 0.9em; }
+.event .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event .where { display: block; font-size: 0.78em; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; }
+.event.now .when { color: var(--accent); }
+.event.now .what { color: var(--accent); }
+.event.past { opacity: 0.45; }
+.empty { color: var(--ink-faint); font-size: clamp(14px, 1vw, 18px); }
+
+/* --- caption & status --------------------------------------------------------- */
+.caption {
+  position: fixed; right: clamp(20px, 3vw, 56px); bottom: clamp(20px, 3vw, 56px);
+  max-width: 34vw; text-align: right; font-size: clamp(12px, 0.85vw, 15px);
+  color: var(--ink-faint); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+  transition: opacity 1.5s;
+}
+.caption .title { color: var(--ink-soft); font-style: italic; font-size: 1.15em; }
+body.ambient .caption { opacity: 0; }
+.offline {
+  position: fixed; top: 18px; right: 18px; width: 10px; height: 10px; border-radius: 50%;
+  background: #ff8a65; box-shadow: 0 0 10px #ff8a65; opacity: 0; transition: opacity 0.6s;
+}
+body.disconnected .offline { opacity: 0.9; }
+
+/* Portrait screens: panel across the bottom. */
+@media (orientation: portrait) {
+  .panel { width: auto; right: clamp(20px, 3vw, 56px); }
+  .caption { top: clamp(20px, 3vw, 56px); bottom: auto; max-width: 60vw; }
+}

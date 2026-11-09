@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home Display</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="art" class="art">
+      <img class="art-layer" alt="" />
+      <img class="art-layer" alt="" />
+    </div>
+    <div class="vignette"></div>
+    <div class="night-dim"></div>
+
+    <aside id="panel" class="panel">
+      <section class="clock">
+        <div id="time" class="time">--:--</div>
+        <div id="date" class="date"></div>
+      </section>
+      <section id="weather" class="weather"></section>
+      <section id="agenda" class="agenda"></section>
+    </aside>
+
+    <figure id="caption" class="caption"></figure>
+    <div id="offline" class="offline" title="Reconnecting…"></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

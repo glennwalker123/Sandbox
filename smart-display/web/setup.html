@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Display Setup</title>
+    <link rel="stylesheet" href="/src/setup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Home display</h1>
+        <p id="summary" class="muted">Loading…</p>
+      </header>
+
+      <section class="card">
+        <h2>Art</h2>
+        <div id="art-now" class="art-now"></div>
+        <dl id="art-info"></dl>
+        <div class="row">
+          <button id="btn-generate">Generate new piece</button>
+          <button id="btn-next" class="secondary">Next</button>
+        </div>
+        <p id="art-msg" class="msg"></p>
+      </section>
+
+      <section class="card">
+        <h2>Google Photos</h2>
+        <p id="photos-info" class="muted"></p>
+        <div class="row">
+          <a id="btn-connect" class="button secondary" href="/api/photos/auth">Connect Google account</a>
+          <button id="btn-pick">Choose photos</button>
+        </div>
+        <div id="picker" class="picker"></div>
+      </section>
+
+      <section class="card">
+        <h2>Data</h2>
+        <dl id="data-info"></dl>
+        <div class="row"><button id="btn-refresh" class="secondary">Refresh weather &amp; calendar</button></div>
+      </section>
+    </main>
+    <script type="module" src="/src/setup.ts"></script>
+  </body>
+</html>
